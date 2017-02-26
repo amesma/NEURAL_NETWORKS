@@ -1,0 +1,69 @@
+Article from a human psychology/neuroscience perspective:
+
+Unconsciousness information we have no metaknowledge about
+
+We are typically conscious about the information that we hold.
+
+Persaud et al. introduced a measure of awareness: Post-Decision Wagering (PDW), wherein participants continuously evaluate their performance.
+
+PDW logic:  should bet high for correct decisions, low for errors.
+
+Goals of paper: What computational principles are required for this metaknowledge to occur?
+
+Assumptions: evaluation of performance requires first-order representations that are responsible for performance to be accessed in a way different from their expression.
+
+Most systems are not aware of the information that they hold, knowledge in the system must become knowledge for the system.
+
+Second order network needed to determine performance of first network.
+
+Structure of network: 3 layer backpropagation feedforward first-order network to perform first task.
+
+First order network: used winner-take-all algorithm (output from 0 to 1)
+
+w_fg & w_gh = [-1, 1]
+
+f vector: 100x1, fixed weight = 1.0 to 2nd level network
+
+g vector: hidden input layer, 60x1, no weights to 2nd level network
+
+h vector: output layer, 100x1 with weight -1.0, 
+
+w_co (comparator units for second order network to obtain wager) [0, .1]
+
+fixed weights are passed to second order network
+
+f-h = c, size 100x1 (this is second order network)
+
+o is output, size 2x1 is final wager
+
+First order network (FON):
+
+patterns:
+1.) stimulus: vector with 100 elements, 99 with range [0 0.2], rand
+2.) noise: vector with 100 elements, range [0 0.02], rand
+pretraining 
+1.) vector with 100 elements stimulus 
+2.) noise with 100 elements  //150 epoch, n = 0.9, momentum = 0.0, temperature = 1
+target: stimulus 99[0]
+present: 1[1]
+
+stimulus: 99 [0]
+1 [1]
+
+stimulus absent: 100[0.0]
+
+Discrimination threshold:
+at least one unit > 0.5
+
+SON:
+
+target:
+high wager = 1.0
+low = 0.0
+if 1.) FON localiazed stimulus && stimulus was presented, OR
+2.)FON did not localize stimulus && stimulus not presented 
+high confidence
+
+2.) high 0.0
+low = 1.0
+for low confidenece
