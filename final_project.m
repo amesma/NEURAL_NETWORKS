@@ -1,6 +1,6 @@
 %--------Set parameters---------
-
-
+learningRate = 1;
+maxEpochs = 150;
 
 %--------Randomly Generate the input---------
 %Create 100x100 random numbers from 0.00 to 0.02
@@ -55,27 +55,108 @@ end
 w_fg = (rand([60 100])*2)-1;
 w_gh = (rand([100 60])*2)-1;
 
-%--------Run the columns through the associator--------
+%--------Run the whole matrix through the epochs--------
+epochs = 0;
 
-%Pre-Training of Data
-for i = 1:200
+% Create store for sse
+sseStore = zeros(maxEpochs,1);
+
+while (epochs < maxEpochs)
+    %Pre-Training of Data
+    for i = 1:200
+
+        %Run the vector through the assocation matrix
+        inputPattern = RandBothInputStore(:,i);
+        input_to_hidden = w_fg * inputPattern;
+        hidden_activation = activation_fn(input_to_hidden);
+        input_to_output = w_gh * hidden_activation;
+        output_activation = activation_fn(input_to_output);
+
+        %Calculate the output error
+        output_error = RandBothTargetStore(:,1) - output_activation;
+
+        % Create the required change in weights by backpropagation
+        dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
+        dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
+
+        % Add the changes to the current weights to fix them
+        w_fg = w_fg + dw_fg;
+        w_gh = w_gh + dw_gh;
+        
+
+    %End of the for loop that runs through all the columns in the matrix
+    end
     
-    %Run the vector through the assocation matrix
-    inputVector = RandBothInputStore(:,i);
-    input_to_hidden = w_fg * inputVector;
+    % ---------Error Calculation
+    
+    % Run the entire pattern through the associator to obtain the errors all
+    % at once, without changing the weights. This is to see the progress of
+    % the associator at this epoch.
+    inputPattern = RandBothInputStore;
+    input_to_hidden = w_fg*inputPattern;
     hidden_activation = activation_fn(input_to_hidden);
-    input_to_output = w_gh * hidden_activation;
+    input_to_output = w_gh*hidden_activation;
     output_activation = activation_fn(input_to_output);
+    output_error = RandBothTargetStore - output_activation;
     
-    %Calculate the output error
-    output_error = RandBothTargetStore(:,1) - output_activation;
+    % Calculate the sum of squares
+    sse = trace(output_error' * output_error);
+    %[Uncomment below to show sse per epoch]
+    %disp(string('sse is ')); disp(sse);
     
-    % Create the required change in weights by backpropagation
-    dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
-    dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
+    % Increment the epochs to keep track of the current epoch and to see if
+    %the maximum epoch has been reached
+    epochs = epochs + 1;
     
-    % Add the changes to the current weights to fix them
-    w_fg = w_fg + dw_fg;
-    w_gh = w_gh + dw_gh;
+    % Store the current sum of squares in the sum of squares store vector
+    sseStore(epochs,1) = sse;
     
+    % Every 10 epochs, show what the sum of squares is
+    if mod(epochs,10) == 0
+       disp(string('epoch = ') + epochs + string(', sse value = ') + sse);
+    end
+        
+        
+% End of the while loop for the epochs        
+end
+
+%Plot the sse
+ figure(1);
+       plot(sseStore(1:epochs,1));
+       title('ssError Plot');
+       xlabel('epoch');
+       ylabel('sse');
+
+%--------Decision of FON--------
+for i = 1:200
+
+        %Run the vector through the assocation matrix
+        inputPattern = RandBothInputStore(:,i);
+        input_to_hidden = w_fg * inputPattern;
+        hidden_activation = activation_fn(input_to_hidden);
+        input_to_output = w_gh * hidden_activation;
+        output_activation = activation_fn(input_to_output);
+        
+        
+        
+        %Set Boolean switch to noise by default until it encounters a value
+        %that is above threshold
+        stimulusPresent = false;
+        
+        for j = 1:100
+            if (output_activation(j,1) >= 0.5)
+               stimulusPresent = true; 
+            end
+        end
+        
+        
+        % Display the results of the decision
+        if(stimulusPresent == true)
+            disp(string('In pattern ') + i + string(', the stimulus is present.')); 
+        elseif (stimulusPresent == false)
+            disp(string('In pattern ') + i + string(', the stimulus is absent.'));
+        else
+            disp(string('There is no way this is supposed to be displaying.'));
+        end
+        
 end
