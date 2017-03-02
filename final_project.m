@@ -7,11 +7,12 @@ maxEpochs = 150;
 StimulusInputStore = rand(100)/50;
 StimulusTargetStore = zeros(100,100);
 
-NoiseInputStore = rand(100)/50;
+NoiseInputStore = rand(100)/50; %range from 0 to 0.02
 NoiseTargetStore = zeros(100,100);
 
 %Insert a random [0.00 to 1.00] into one of each vector (column), and
 %insert a 1 into the corresponding location in the vector
+%each f vector is a column
 for i = 1:100
     %Generate the value of the stimulus
     randStimulus = rand;
@@ -45,6 +46,7 @@ RandBothTargetStore = zeros(100,200);
 thePermutation = randperm(200);
 
 %Fill in the random input and target stores
+% each element column can be either a noise or a stimuli
 for i = 1:200
    RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
    RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
@@ -73,7 +75,7 @@ while (epochs < maxEpochs)
         output_activation = activation_fn(input_to_output);
 
         %Calculate the output error
-        output_error = RandBothTargetStore(:,1) - output_activation;
+        output_error = RandBothTargetStore(:,i) - output_activation;
 
         % Create the required change in weights by backpropagation
         dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
