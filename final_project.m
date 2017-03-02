@@ -17,7 +17,7 @@ NoiseTargetStore = zeros(100,100);
 for i = 1:100
     %Generate the value of the stimulus
     randStimulus = rand;
-    %Generate the locu of the stimulus within the vector
+    %Generate the locus of the stimulus within the vector
     randLocus = randi([1,100]);
     %Insert the stimulus into the input vector
     StimulusInputStore(randLocus,i) = randStimulus;
@@ -46,6 +46,8 @@ RandBothTargetStore = zeros(100,200);
 %Create a random permutation from 1 to 200
 thePermutation = randperm(200);
 
+%Create a vector to keep track of which patterns have the stimulus and
+%which are only noise
 correctTrials = zeros(200,1);
 
 %Fill in the random input and target stores
@@ -53,8 +55,9 @@ correctTrials = zeros(200,1);
 for i = 1:200
    RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
    RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
+   %Fill in the value with 1 if there is stimulus, leave at 0 otherwise
    if(any(RandBothTargetStore(:,i)>0))
-   correctTrials(i,1) = 1;
+       correctTrials(i,1) = 1;
    end
 end
 
@@ -95,7 +98,7 @@ while (epochs < maxEpochs)
     %End of the for loop that runs through all the columns in the matrix
     end
     
-    % ---------Error Calculation
+    % ---------Error Calculation---------
     
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
@@ -168,6 +171,9 @@ for i = 1:200
         end
         if((correctTrials(i) == 1 && stimulusPresent == true) || (correctTrials(i) == 0 && stimulusPresent == false))
             correctAssess = correctAssess + 1;
+            disp(string('   ++ This assessment is correct.'));
+        else
+            disp(string('   -- This assessment is incorrect.'));
         end
 end
 
