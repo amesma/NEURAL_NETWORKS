@@ -1,6 +1,7 @@
 %--------Set parameters---------
 learningRate = 1;
 maxEpochs = 150;
+correctAssess = 0;
 
 %--------Randomly Generate the input---------
 %Create 100x100 random numbers from 0.00 to 0.02
@@ -45,11 +46,16 @@ RandBothTargetStore = zeros(100,200);
 %Create a random permutation from 1 to 200
 thePermutation = randperm(200);
 
+correctTrials = zeros(200,1);
+
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
 for i = 1:200
    RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
    RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
+   if(any(RandBothTargetStore(:,i)>0))
+   correctTrials(i,1) = 1;
+   end
 end
 
 
@@ -160,5 +166,10 @@ for i = 1:200
         else
             disp(string('There is no way this is supposed to be displaying.'));
         end
-        
+        if((correctTrials(i) == 1 && stimulusPresent == true) || (correctTrials(i) == 0 && stimulusPresent == false))
+            correctAssess = correctAssess + 1;
+        end
 end
+
+disp('Correct assessment');
+disp(correctAssess);
