@@ -1,7 +1,10 @@
 %--------Set parameters---------
-learningRate = 1;
+learningRate = 0.9;
+secondLearningRate = 0.1;
 maxEpochs = 150;
 correctAssess = 0;
+%simple counter to store all errors
+secondNetUnit = 0;
 
 %--------Randomly Generate the input---------
 %Create 100x100 random numbers from 0.00 to 0.02
@@ -100,15 +103,15 @@ while (epochs < maxEpochs)
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
     % the associator at this epoch.
-    inputPattern = RandBothInputStore;
-    input_to_hidden = w_fg*inputPattern;
-    hidden_activation = activation_fn(input_to_hidden);
-    input_to_output = w_gh*hidden_activation;
-    output_activation = activation_fn(input_to_output);
-    output_error = RandBothTargetStore - output_activation;
+    inputPatternOuter = RandBothInputStore;
+    input_to_hidden_outer = w_fg*inputPatternOuter;
+    hidden_activation_outer = activation_fn(input_to_hidden_outer);
+    input_to_output_outer = w_gh*hidden_activation_outer;
+    output_activation_outer = activation_fn(input_to_output_outer);
+    output_error_outer = RandBothTargetStore - output_activation_outer;
     
     % Calculate the sum of squares
-    sse = trace(output_error' * output_error);
+    sse = trace(output_error_outer' * output_error_outer);
     %[Uncomment below to show sse per epoch]
     %disp(string('sse is ')); disp(sse);
     
@@ -124,17 +127,17 @@ while (epochs < maxEpochs)
        disp(string('epoch = ') + epochs + string(', sse value = ') + sse);
     end
     %---------------------------------------SON
-compMatrix = RandBothInputStore - output_activation;
-% f weight is 1, h weight is -1
-w_co = rand(2,100) * 0.1;
+    compMatrix = RandBothInputStore - output_activation_outer;
+    % f weight is 1, h weight is -1
+    w_co = rand(2,100) * 0.1;
 
-%compMatrix is 100 200
-%inputPatetern_2 is 100 1
-inputPattern_2 = compMatrix(:,i);
-input_to_hidden_2 = w_co * inputPattern_2;
-output_activation_2 = activation_fn(input_to_hidden_2);
-%should give you output as a pattern
-% End of the while loop for the epochs        
+    %compMatrix is 100 200
+    %inputPatetern_2 is 100 1
+    inputPattern_2 = compMatrix;
+    input_to_hidden_2 = w_co * inputPattern_2;
+    output_activation_2 = activation_fn(input_to_hidden_2);
+    %should give you output as a pattern
+    % End of the while loop for the epochs        
 end
 
 %w_wta = rand(size(output_activation_2,1)) * 0.1; 
