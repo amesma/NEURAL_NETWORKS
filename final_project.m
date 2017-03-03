@@ -53,27 +53,45 @@ thePermutation = randperm(200);
 %which are only noise
 correctTrials = zeros(200,1);
 
+%Create a store for the Target Vectors of SoN
+targetVectorStore = zeros(2,200);
+
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
 for i = 1:200
    RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
    RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
+   
    %Fill in the value with 1 if there is stimulus, leave at 0 otherwise
    if(any(RandBothTargetStore(:,i)>0))
        correctTrials(i,1) = 1;
    end
+   
+   %Generate target vectors for SoN
+   if (correctTrials(i,1) == 1)
+       targetVectorStore(:,i) = [1; 0];
+   elseif (correctTrials(i,1) == 0)
+        targetVectorStore(:,i) = [0; 1];   
+   else
+       disp(string('Error with generating target vector.'));
+   end   
+   
 end
 
 
-%--------Randomly Generate the weights---------
+%--------Randomly Generate the weights for FoN---------
 w_fg = (rand([60 100])*2)-1;
 w_gh = (rand([100 60])*2)-1;
+
+%--------Randomly Generate the weights for SoN---------
+w_co = rand(2,100) * 0.1;
 
 %--------Run the whole matrix through the epochs--------
 epochs = 0;
 
-% Create store for sse
+% Create store for sse and sse_2
 sseStore = zeros(maxEpochs,1);
+sseStore_2 = zeros(maxEpochs,1);
 
 while (epochs < maxEpochs)
     %Pre-Training of Data
@@ -97,6 +115,27 @@ while (epochs < maxEpochs)
         w_fg = w_fg + dw_fg;
         w_gh = w_gh + dw_gh;
         
+        
+        %----------------SoN---------------
+        
+        % Generate Comparison vector
+        comparisonMatrix = inputPattern - output_activation;
+        
+        % Run it through the SoN
+        inputPattern_2 = comparisonMatrix;
+        input_to_output_2 = w_co * inputPattern_2;
+        output_activation_2 = activation_fn(input_to_output_2);
+        
+        
+        % Generate the error vector for SoN
+        output_error_2 = targetVectorStore(:,i) - output_activation_2;
+        
+        % Calculate the desired change in weights for w_co
+        dw_co = changeW_GH(learningRate,w_co,inputPattern_2,output_error_2);
+        
+        % Change the weights
+        w_co = w_co + dw_co;
+        
 
     %End of the for loop that runs through all the columns in the matrix
     end
@@ -111,9 +150,11 @@ while (epochs < maxEpochs)
     hidden_activation_outer = activation_fn(input_to_hidden_outer);
     input_to_output_outer = w_gh*hidden_activation_outer;
     output_activation_outer = activation_fn(input_to_output_outer);
+    
+    %Calculate the error for the entire matrix for FoN
     output_error_outer = RandBothTargetStore - output_activation_outer;
     
-    % Calculate the sum of squares
+    % Calculate the sum of squares for FoN
     sse = trace(output_error_outer' * output_error_outer);
     %[Uncomment below to show sse per epoch]
     %disp(string('sse is ')); disp(sse);
@@ -122,24 +163,38 @@ while (epochs < maxEpochs)
     %the maximum epoch has been reached
     epochs = epochs + 1;
     
-    % Store the current sum of squares in the sum of squares store vector
+    % Store the current sum of squares for FoN in the sum of squares store vector
     sseStore(epochs,1) = sse;
     
     % Every 10 epochs, show what the sum of squares is
     if mod(epochs,10) == 0
-       disp(string('epoch = ') + epochs + string(', sse value = ') + sse);
+       disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
     end
+    
+    
     %---------------------------------------SON
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
-    w_co = rand(2,100) * 0.1;
-
-    %compMatrix is 100 200
-    %inputPatetern_2 is 100 1
-    inputPattern_2 = compMatrix;
-    input_to_hidden_2 = w_co * inputPattern_2;
-    output_activation_2 = activation_fn(input_to_hidden_2);
-    %should give you output as a pattern
+    
+    %[Notes]
+    %compMatrix is 100 x 200
+    %inputPattern_2 is 100 x 1
+    
+    % Run the entire thing through the SoN to test, like FoN above
+    inputPatternOuter_2 = compMatrix;
+    input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
+    output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
+    
+    % Calculate the error for the entire matrix for SoN
+    output_error_outer_2 = targetVectorStore - output_activation_outer_2;
+    
+    % Calculate the sum of squares for SoN
+    sse_2 = trace(output_error_outer_2' * output_error_outer_2);
+    
+    % Store the current sum of squares for SoN in the sum of squares store vector
+    sseStore_2(epochs,1) = sse_2;
+    
+    
     % End of the while loop for the epochs        
 end
 
@@ -148,9 +203,15 @@ end
 %Plot the sse
  figure(1);
        plot(sseStore(1:epochs,1));
-       title('ssError Plot');
+       title('FoN ssError Plot');
        xlabel('epoch');
        ylabel('sse');
+       
+ figure(2);
+       plot(sseStore_2(1:epochs,1));
+       title('SoN ssError Plot');
+       xlabel('epoch');
+       ylabel('sse_2');
 
 %--------Decision of FON--------
 for i = 1:200
