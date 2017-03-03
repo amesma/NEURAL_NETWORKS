@@ -123,11 +123,20 @@ while (epochs < maxEpochs)
     if mod(epochs,10) == 0
        disp(string('epoch = ') + epochs + string(', sse value = ') + sse);
     end
-        
+    %---------------------------------------SON
+compMatrix = RandBothInputStore - output_activation;
+% f weight is 1, h weight is -1
+w_co = rand(2,1) * 0.1;
+
+inputPattern_2 = compMatrix(:,i);
+input_to_hidden_2 = w_co * inputPattern_2;
+output_activation_2 = activation_fn(input_to_hidden_2);
+
         
 % End of the while loop for the epochs        
 end
 
+wta(1, output_activation_2, 
 %Plot the sse
  figure(1);
        plot(sseStore(1:epochs,1));
