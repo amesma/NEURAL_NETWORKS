@@ -3,7 +3,9 @@ learningRate = 0.9;
 secondLearningRate = 0.1;
 maxEpochs = 150;
 correctAssess = 0;
+correctAssess_2 = 0;
 %simple counter to store all errors
+%[Not sure if we are using this secondNetUnit variable]
 secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
 
@@ -79,6 +81,7 @@ for i = 1:200
        correctTrials(i,1) = 1;
    end
    
+   %[Wrong here]
    %Generate target vectors for SoN
    if (correctTrials(i,1) == 1)
        targetVectorStore(:,i) = [1; 0];
@@ -105,9 +108,14 @@ epochs = 0;
 sseStore = zeros(maxEpochs,1);
 sseStore_2 = zeros(maxEpochs,1);
 
+% Create a store for the output_activations of FoN
+output_activation_store = zeros(100,200);
+
 while (epochs < maxEpochs)
     %Pre-Training of Data
     for i = 1:200
+        
+        %----------------FoN---------------
 
         %Run the vector through the assocation matrix
         inputPattern = RandBothInputStore(:,i);
@@ -115,6 +123,9 @@ while (epochs < maxEpochs)
         hidden_activation = activation_fn(input_to_hidden);
         input_to_output = w_gh * hidden_activation;
         output_activation = activation_fn(input_to_output);
+        
+        %Store the output_activation into output_activation_store
+        output_activation_store(:,i) = output_activation;
 
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
@@ -132,6 +143,22 @@ while (epochs < maxEpochs)
         w_fg = w_fg + dw_fg;
         w_gh = w_gh + dw_gh;
         
+        %Determine judgment at this point to train SoN
+        stimulusPresent = false;
+        for j = 1:100
+            if (output_activation(j,1) >= 0.5)
+               stimulusPresent = true; 
+            end
+        end
+        
+        % Determine if the FoN is making a correct judgment
+        if ((stimulusPresent == true && correctTrials(i,1) == 1) || (stimulusPresent == false && correctTrials(i,1) == 0))
+           FoNIsCorrect = true; 
+        elseif  ((stimulusPresent == true && correctTrials(i,1) == 0) || (stimulusPresent == false && correctTrials(i,1) == 1))
+           FoNIsCorrect = false;
+        else
+            disp(string('Error in determining if FONIsCorrect.'));
+        end
         
         %----------------SoN---------------
         % Generate Comparison vector
@@ -142,12 +169,20 @@ while (epochs < maxEpochs)
         input_to_output_2 = w_co * inputPattern_2;
         output_activation_2 = activation_fn(input_to_output_2);
         
+        % Set up the target vector according to the FoN's accuracy
+        if (FoNIsCorrect == true) 
+            targetVector = [1;0];
+        elseif (FoNIsCorrect == false) 
+            targetVector = [0;1]; 
+        else
+            disp(string('Error in generating targetVector in top 1:200 loop.'));
+        end
         
         % Generate the error vector for SoN
-        output_error_2 = targetVectorStore(:,i) - output_activation_2;
+        output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
-        dw_co = changeW_GH(learningRate,w_co,inputPattern_2,output_error_2);
+        dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
         
         % Change the weights
         w_co = w_co + dw_co;
@@ -159,7 +194,7 @@ while (epochs < maxEpochs)
     %End of the for loop that runs through all the columns in the matrix
     end
     
-    % ---------Error Calculation---------
+    % ---------Outer FoN---------
     
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
@@ -170,6 +205,7 @@ while (epochs < maxEpochs)
     input_to_output_outer = w_gh*hidden_activation_outer;
     output_activation_outer = activation_fn(input_to_output_outer);
     
+    %[Wrong here]
     %Calculate the error for the entire matrix for FoN
     output_error_outer = RandBothTargetStore - output_activation_outer;
     
@@ -191,7 +227,7 @@ while (epochs < maxEpochs)
     end
     
     
-    %---------------------------------------SON
+    %----------------- Outer SoN -----------------
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
     
@@ -230,9 +266,9 @@ end
        xlabel('epoch');
        ylabel('sse_2');
 
-
-%--------Decision of FON--------
 for i = 1:200
+    
+        %--------Decision of FON--------
 
         %Run the vector through the assocation matrix
         inputPattern = RandBothInputStore(:,i);%new_fon(:,i);
@@ -262,13 +298,64 @@ for i = 1:200
         else
             disp(string('There is no way this is supposed to be displaying.'));
         end
-        if((correctTrials(i) == 1 && stimulusPresent == true) || (correctTrials(i) == 0 && stimulusPresent == false))
+        
+        % Determine the correct answer and set the boolean value to reflect
+        % accuracy
+        
+        if((correctTrials(i,1) == 1 && stimulusPresent == true) || (correctTrials(i,1) == 0 && stimulusPresent == false))
             correctAssess = correctAssess + 1;
             disp(string('   ++ This assessment is correct.'));
+            FoNIsCorrect = true;
         else
             disp(string('   -- This assessment is incorrect.'));
+            FoNIsCorrect = false;
         end
+        
+        
+        %--------Decision of SON--------
+        
+        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+            
+        % Run the vector through the association matrix
+        inputPattern_2 = compMatrix;
+        input_to_hidden_2 = w_co * inputPattern_2;
+        output_activation_2 = activation_fn(input_to_hidden_2);
+        
+        %Comparison to make a decision
+        if (output_activation_2(1,1) > output_activation_2(2,1))
+            disp(string('      The SoN decision is High wager.'));
+            highWager = true;
+        elseif (output_activation_2(1,1) < output_activation_2(2,1))
+            disp(string('      The SoN decision is Low wager.'));
+            highWager = false;
+        else
+             disp(string('Error in making a SoN Decision.'));
+        end
+        
+        
+        % Set up the target vector according to the FoN's accuracy
+        if (FoNIsCorrect == true) 
+            targetVector = [1;0];
+        elseif (FoNIsCorrect == false) 
+            targetVector = [0;1]; 
+        else
+            disp(string('Error in generating targetVector in bottom 1:200 loop.'));
+        end
+        
+        
+        if ((highWager == true &&  FoNIsCorrect == true)||(highWager == false &&  FoNIsCorrect == false))
+            disp(string('         The SoN assessment is correct!!! :D :D '));
+            correctAssess_2 = correctAssess_2 + 1;   
+        elseif ((highWager == true &&  FoNIsCorrect == false)||(highWager == false &&  FoNIsCorrect == true))
+            disp(string('         The SoN assessment is incorrect.... '));   
+        end
+        
+        
+        
+        
 end
 
-disp('Correct assessment');
+disp('Correct assessment for FoN');
 disp(correctAssess);
+disp('Correct assessment for SoN');
+disp(correctAssess_2);
