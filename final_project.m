@@ -9,18 +9,18 @@ correctAssess_2 = 0;
 secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
 
-%----------------Winner Take All Paramters (first type of network)
+%----------------Winner Take All Parameters (first type of network)
 dim = 100;
 half_dim = 50;
 upper_limit = 1;
 lower_limit = 0;
 epsilon = 2;
 length_constant = .5;
-wta_itr = 2;
+wta_itr = 5;
 
 
 
-%--------Randomly Generate the input---------
+%--------Randomly Generate the input for Pre-Training---------
 %Create 100x100 random numbers from 0.00 to 0.02
 StimulusInputStore = rand(100)/50;
 StimulusTargetStore = zeros(100,100);
@@ -130,7 +130,7 @@ while (epochs < maxEpochs)
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
      
-        
+        %---------------------------WTA Implementation for FoN
         %first type of WTA network
         inhibit_weights = makeInhibitoryWeights(dim,half_dim,epsilon,length_constant);
         output_activation = compute_inhibited_vect(inhibit_weights,output_activation,output_activation, dim, wta_itr, epsilon);  
@@ -186,7 +186,7 @@ while (epochs < maxEpochs)
         
         % Change the weights
         w_co = w_co + dw_co;
-        
+      
         %second example of WTA network
         %w_wta = rand(size(output_activation_2,1)) * 0.1; 
         %wta(1, output_activation_2, w_wta, 150);
@@ -311,7 +311,6 @@ for i = 1:200
             FoNIsCorrect = false;
         end
         
-        
         %--------Decision of SON--------
         
         compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
@@ -349,10 +348,7 @@ for i = 1:200
         elseif ((highWager == true &&  FoNIsCorrect == false)||(highWager == false &&  FoNIsCorrect == true))
             disp(string('         The SoN assessment is incorrect.... '));   
         end
-        
-        
-        
-        
+             
 end
 
 disp('Correct assessment for FoN');
