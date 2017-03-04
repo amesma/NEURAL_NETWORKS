@@ -1,9 +1,8 @@
 %--------Set parameters---------
 learningRate = 0.9;
-secondLearningRate = 0.1;
+secondLearningRate = 0.9;
 maxEpochs = 150;
-correctAssess = 0;
-correctAssess_2 = 0;
+
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 secondNetUnit = 0;
@@ -236,18 +235,39 @@ end
 
 %w_wta = rand(size(output_activation_2,1)) * 0.1; 
 %wta(1, output_activation_2, w_wta, 150);
-%Plot the sse
+
+%-----------Plot the sse--------------
+% Plot sse for FoN
  figure(1);
        plot(sseStore(1:epochs,1));
        title('FoN ssError Plot');
        xlabel('epoch');
        ylabel('sse');
        
+ % Plot sse for SoN      
  figure(2);
        plot(sseStore_2(1:epochs,1));
        title('SoN ssError Plot');
        xlabel('epoch');
        ylabel('sse_2');
+
+       
+%--------Create Counters for the testing loop--------
+       
+%Create counter for correct assessments
+correctAssess = 0;
+correctAssess_2 = 0;
+
+
+% Create counters for high and low wagers
+highWagerCount = 0;
+lowWagerCount = 0;
+
+% Create counters for SDT
+hitsCount = 0;
+faCount = 0;
+missCount = 0;
+crCount = 0;
 
 %--------Loop for Testing--------
 
@@ -310,9 +330,11 @@ for i = 1:200
         if (output_activation_2(1,1) > output_activation_2(2,1))
             disp(string('      The SoN decision is High wager.'));
             highWager = true;
+            highWagerCount = highWagerCount + 1;
         elseif (output_activation_2(1,1) < output_activation_2(2,1))
             disp(string('      The SoN decision is Low wager.'));
             highWager = false;
+            lowWagerCount = lowWagerCount + 1;
         else
              disp(string('Error in making a SoN Decision.'));
         end
@@ -328,19 +350,40 @@ for i = 1:200
         end
         
         
-        if ((highWager == true &&  FoNIsCorrect == true)||(highWager == false &&  FoNIsCorrect == false))
+        if (highWager == true &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is correct!!! :D :D '));
             correctAssess_2 = correctAssess_2 + 1;   
-        elseif ((highWager == true &&  FoNIsCorrect == false)||(highWager == false &&  FoNIsCorrect == true))
-            disp(string('         The SoN assessment is incorrect.... '));   
+            hitsCount = hitsCount + 1;
+        elseif (highWager == false &&  FoNIsCorrect == false)
+            disp(string('         The SoN assessment is correct!!! :D :D '));
+            correctAssess_2 = correctAssess_2 + 1;   
+            crCount = crCount + 1;
+        elseif (highWager == true &&  FoNIsCorrect == false)
+            disp(string('         The SoN assessment is incorrect.... '));
+            faCount = faCount + 1;
+        elseif (highWager == false &&  FoNIsCorrect == true)
+            disp(string('         The SoN assessment is incorrect.... '));
+            missCount = missCount + 1;
         end
         
         
         
         
 end
-
+%Display total correct assessments
 disp('Correct assessment for FoN');
-disp(correctAssess);
+disp(correctAssess/2);
 disp('Correct assessment for SoN');
-disp(correctAssess_2);
+disp(correctAssess_2/2);
+
+%Display wager count
+disp(string('High Wager Count: ') + highWagerCount/2);
+disp(string('Low Wager Count: ') + lowWagerCount/2);
+disp(' ');
+
+%Display SDT numbers
+disp(string('Hits Count: ') + hitsCount/2);
+disp(string('False Alarms Count: ') + faCount/2);
+disp(string('Correct Rejection Count: ') + crCount/2);
+disp(string('Miss Count: ') + missCount/2);
+
