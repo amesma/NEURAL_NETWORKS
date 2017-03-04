@@ -5,6 +5,18 @@ maxEpochs = 150;
 correctAssess = 0;
 %simple counter to store all errors
 secondNetUnit = 0;
+wtaCorrected = zeros(100,200);
+
+%----------------Winner Take All Paramters (first type of network)
+dim = 100;
+half_dim = 50;
+upper_limit = 1;
+lower_limit = 0;
+epsilon = 2;
+length_constant = .5;
+wta_itr = 2;
+
+
 
 %--------Randomly Generate the input---------
 %Create 100x100 random numbers from 0.00 to 0.02
@@ -106,8 +118,13 @@ while (epochs < maxEpochs)
 
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
+     
+        
+        %first type of WTA network
+        inhibit_weights = makeInhibitoryWeights(dim,half_dim,epsilon,length_constant);
+        output_activation = compute_inhibited_vect(inhibit_weights,output_activation,output_activation, dim, wta_itr, epsilon);  
 
-        % Create the required change in weights by backpropagation
+          % Create the required change in weights by backpropagation
         dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
         dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
 
@@ -117,7 +134,6 @@ while (epochs < maxEpochs)
         
         
         %----------------SoN---------------
-        
         % Generate Comparison vector
         comparisonMatrix = inputPattern - output_activation;
         
@@ -136,6 +152,9 @@ while (epochs < maxEpochs)
         % Change the weights
         w_co = w_co + dw_co;
         
+        %second example of WTA network
+        %w_wta = rand(size(output_activation_2,1)) * 0.1; 
+        %wta(1, output_activation_2, w_wta, 150);
 
     %End of the for loop that runs through all the columns in the matrix
     end
@@ -198,8 +217,6 @@ while (epochs < maxEpochs)
     % End of the while loop for the epochs        
 end
 
-%w_wta = rand(size(output_activation_2,1)) * 0.1; 
-%wta(1, output_activation_2, w_wta, 150);
 %Plot the sse
  figure(1);
        plot(sseStore(1:epochs,1));
@@ -213,17 +230,17 @@ end
        xlabel('epoch');
        ylabel('sse_2');
 
+
 %--------Decision of FON--------
 for i = 1:200
 
         %Run the vector through the assocation matrix
-        inputPattern = RandBothInputStore(:,i);
+        inputPattern = RandBothInputStore(:,i);%new_fon(:,i);
+   
         input_to_hidden = w_fg * inputPattern;
         hidden_activation = activation_fn(input_to_hidden);
         input_to_output = w_gh * hidden_activation;
         output_activation = activation_fn(input_to_output);
-        
-        
         
         %Set Boolean switch to noise by default until it encounters a value
         %that is above threshold
@@ -232,6 +249,7 @@ for i = 1:200
         for j = 1:100
             if (output_activation(j,1) >= 0.5)
                stimulusPresent = true; 
+              % disp(output_activation(j,1));
             end
         end
         

@@ -22,27 +22,17 @@ function [w,x] = wta(alpha,x,wzero,iter)
 
 w = wzero;
 
-%normalize the x's
-
-for i = 1:1:b
-
-    x(1:a,i) = x(1:a,i)./(norm(x(1:a,i)));
-
-end
-
- 
-
 %x loop on the outside, w loop on the inside
 
-for k = 1:1:iter
+for k = 1:iter
 
-    for i = 1:1:b
+    for i = 1:b
 
         max=-1;
 
         ind = 1;
 
-        for j = 1:1:d
+        for j = 1:d
 
             product = (w(1:c,j)')*x(1:a,i);
 
