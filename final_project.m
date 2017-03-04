@@ -6,8 +6,20 @@ maxEpochs = 150;
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 secondNetUnit = 0;
+wtaCorrected = zeros(100,200);
 
-%--------Randomly Generate the input---------
+%----------------Winner Take All Parameters (first type of network)
+dim = 100;
+half_dim = 50;
+upper_limit = 1;
+lower_limit = 0;
+epsilon = 2;
+length_constant = .5;
+wta_itr = 5;
+
+
+
+%--------Randomly Generate the input for Pre-Training---------
 %Create 100x100 random numbers from 0.00 to 0.02
 StimulusInputStore = rand(100)/50;
 StimulusTargetStore = zeros(100,100);
@@ -116,8 +128,13 @@ while (epochs < maxEpochs)
 
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
+     
+        %----------------WTA Implementation for FoN-----------------
+        %first type of WTA network
+        inhibit_weights = makeInhibitoryWeights(dim,half_dim,epsilon,length_constant);
+        output_activation = compute_inhibited_vect(inhibit_weights,output_activation,output_activation, dim, wta_itr, epsilon);  
 
-        % Create the required change in weights by backpropagation
+          % Create the required change in weights by backpropagation
         dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
         dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
 
@@ -143,7 +160,6 @@ while (epochs < maxEpochs)
         end
         
         %----------------SoN---------------
-        
         % Generate Comparison vector
         comparisonMatrix = inputPattern - output_activation;
         
@@ -169,7 +185,10 @@ while (epochs < maxEpochs)
         
         % Change the weights
         w_co = w_co + dw_co;
-        
+      
+        %second example of WTA network
+        %w_wta = rand(size(output_activation_2,1)) * 0.1; 
+        %wta(1, output_activation_2, w_wta, 150);
 
     %End of the for loop that runs through all the columns in the matrix
     end
@@ -233,11 +252,15 @@ while (epochs < maxEpochs)
     % End of the while loop for the epochs        
 end
 
+
 %w_wta = rand(size(output_activation_2,1)) * 0.1; 
 %wta(1, output_activation_2, w_wta, 150);
 
 %-----------Plot the sse--------------
 % Plot sse for FoN
+
+%Plot the sse
+
  figure(1);
        plot(sseStore(1:epochs,1));
        title('FoN ssError Plot');
@@ -250,6 +273,7 @@ end
        title('SoN ssError Plot');
        xlabel('epoch');
        ylabel('sse_2');
+
 
        
 %--------Create Counters for the testing loop--------
@@ -271,18 +295,18 @@ crCount = 0;
 
 %--------Loop for Testing--------
 
+
 for i = 1:200
     
         %--------Decision of FON--------
 
         %Run the vector through the assocation matrix
-        inputPattern = RandBothInputStore(:,i);
+        inputPattern = RandBothInputStore(:,i);%new_fon(:,i);
+   
         input_to_hidden = w_fg * inputPattern;
         hidden_activation = activation_fn(input_to_hidden);
         input_to_output = w_gh * hidden_activation;
         output_activation = activation_fn(input_to_output);
-        
-        
         
         %Set Boolean switch to noise by default until it encounters a value
         %that is above threshold
@@ -291,6 +315,7 @@ for i = 1:200
         for j = 1:100
             if (output_activation(j,1) >= 0.5)
                stimulusPresent = true; 
+              % disp(output_activation(j,1));
             end
         end
         
@@ -315,7 +340,6 @@ for i = 1:200
             disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
         end
-        
         
         %--------Decision of SON--------
         
@@ -365,10 +389,7 @@ for i = 1:200
             disp(string('         The SoN assessment is incorrect.... '));
             missCount = missCount + 1;
         end
-        
-        
-        
-        
+             
 end
 %Display total correct assessments
 disp('Correct assessment for FoN');
