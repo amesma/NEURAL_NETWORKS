@@ -13,9 +13,9 @@ dim = 100;
 half_dim = 50;
 upper_limit = 1;
 lower_limit = 0;
-epsilon = 2;
+epsilon = 3;
 length_constant = .5;
-wta_itr = 5;
+wta_itr = 10;
 
 
 
@@ -119,7 +119,7 @@ while (epochs < maxEpochs)
         
         %----------------FoN---------------
 
-        %Run the vector through the assocation matrix
+        %Run the vector through the assocation matrix one at a time
         inputPattern = RandBothInputStore(:,i);
         input_to_hidden = w_fg * inputPattern;
         hidden_activation = activation_fn(input_to_hidden);
@@ -164,12 +164,19 @@ while (epochs < maxEpochs)
         
         %----------------SoN---------------
         % Generate Comparison vector
+        %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
         
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         input_to_output_2 = w_co * inputPattern_2;
         output_activation_2 = activation_fn(input_to_output_2);
+        
+        %----------------WTA Implementation for FoN-----------------
+        %first type of WTA network
+        inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,length_constant);
+        output_activation_2 = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
+
         
         % Set up the target vector according to the FoN's accuracy
         if (FoNIsCorrect == true) 
@@ -181,6 +188,7 @@ while (epochs < maxEpochs)
         end
         
         % Generate the error vector for SoN
+        %backpropagate through one set of hidden units
         output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
@@ -188,10 +196,6 @@ while (epochs < maxEpochs)
         
         % Change the weights
         w_co = w_co + dw_co;
-      
-        %second example of WTA network
-        %w_wta = rand(size(output_activation_2,1)) * 0.1; 
-        %wta(1, output_activation_2, w_wta, 150);
 
     %End of the for loop that runs through all the columns in the matrix
     end
