@@ -1,6 +1,6 @@
 %--------Set parameters---------
 learningRate = 0.9;
-secondLearningRate = 0.9;
+secondLearningRate = 0.1;
 maxEpochs = 150;
 
 %simple counter to store all errors
@@ -8,7 +8,7 @@ maxEpochs = 150;
 secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
 
-%----------------Winner Take All Parameters (first type of network)
+%----------Winner Take All Parameters (first type of network)-------
 dim = 100;
 half_dim = 50;
 upper_limit = 1;
@@ -26,6 +26,9 @@ StimulusTargetStore = zeros(100,100);
 
 NoiseInputStore = rand(100)/50; %range from 0 to 0.02
 NoiseTargetStore = zeros(100,100);
+
+%Create a vector to store the loci of the stimulus
+stimulusLoci = zeros(100,1);
 
 %Insert a random [0.00 to 1.00] into one of each vector (column), and
 %insert a 1 into the corresponding location in the vector
@@ -134,7 +137,7 @@ while (epochs < maxEpochs)
         inhibit_weights = makeInhibitoryWeights(dim,half_dim,epsilon,length_constant);
         output_activation = compute_inhibited_vect(inhibit_weights,output_activation,output_activation, dim, wta_itr, epsilon);  
 
-          % Create the required change in weights by backpropagation
+        % Create the required change in weights by backpropagation
         dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
         dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
 
@@ -292,6 +295,36 @@ hitsCount = 0;
 faCount = 0;
 missCount = 0;
 crCount = 0;
+
+%------Set up Subthreshold stimuli for testing--------
+
+%[Comment chunk below for suprathreshold stimuli, uncomment for
+%subthreshold stimuli]
+
+randStimulusLoci = zeros(1,200);
+for i = 1:200
+    for j = 1:100
+       if(RandBothTargetStore(j,i) == 1)
+          randStimulusLoci(1,i) = j; 
+       end
+    end
+end
+
+%Add noise (+0.0012) to every input of the FoN
+RandBothInputStore = RandBothInputStore + 0.0012;
+
+%Subtract the noise from the stimulus inputs
+for i = 1:200
+   if(randStimulusLoci(1,i) ~= 0)
+       RandBothInputStore(randStimulusLoci(1,i),i) = RandBothInputStore(randStimulusLoci(1,i),i) - 0.0012;
+   elseif (randStimulusLoci(1,i) == 0)
+       %Intentionally blank to test for error below
+   else
+       disp(string('Error in subtracting noise from stimulus.'));
+   end
+end
+
+%[Comment/Uncomment for supra/subthreshold stimuli ends]
 
 %--------Loop for Testing--------
 
