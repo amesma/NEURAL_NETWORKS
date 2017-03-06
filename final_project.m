@@ -1,7 +1,7 @@
 %--------Set parameters---------
 learningRate = 0.9;
 secondLearningRate = 0.1;
-maxEpochs = 150;
+maxEpochs = 16;
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
@@ -9,17 +9,23 @@ secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
 
 %----------Winner Take All Parameters (first type of network)-------
+%not changing
 dim = 100;
 half_dim = 50;
+
 upper_limit = 1;
 lower_limit = 0;
-epsilon = 3;
-length_constant = .5;
+%experimental
+epsilon = 2.3; %keep
+length_constant = 0.85;
 wta_itr = 10;
-
-
+max_strength = 5;
 
 %--------Randomly Generate the input for Pre-Training---------
+
+son_Output = nan(2,200);
+fon_Correct = nan(2,200);
+
 %Create 100x100 random numbers from 0.00 to 0.02
 StimulusInputStore = rand(100)/50;
 StimulusTargetStore = zeros(100,100);
@@ -85,6 +91,7 @@ for i = 1:200
    
    %[Wrong here]
    %Generate target vectors for SoN
+  %{
    if (correctTrials(i,1) == 1)
        targetVectorStore(:,i) = [1; 0];
    elseif (correctTrials(i,1) == 0)
@@ -92,10 +99,9 @@ for i = 1:200
    else
        disp(string('Error with generating target vector.'));
    end   
+   %}
    
 end
-
-
 %--------Randomly Generate the weights for FoN---------
 w_fg = (rand([60 100])*2)-1;
 w_gh = (rand([100 60])*2)-1;
@@ -121,9 +127,9 @@ while (epochs < maxEpochs)
 
         %Run the vector through the assocation matrix one at a time
         inputPattern = RandBothInputStore(:,i);
-        input_to_hidden = w_fg * inputPattern;
+        input_to_hidden = w_fg * inputPattern; %60
         hidden_activation = activation_fn(input_to_hidden);
-        input_to_output = w_gh * hidden_activation;
+        input_to_output = w_gh * hidden_activation; %100
         output_activation = activation_fn(input_to_output);
         
         %Store the output_activation into output_activation_store
@@ -132,11 +138,6 @@ while (epochs < maxEpochs)
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
      
-        %----------------WTA Implementation for FoN-----------------
-        %first type of WTA network
-        inhibit_weights = makeInhibitoryWeights(dim,half_dim,epsilon,length_constant);
-        output_activation = compute_inhibited_vect(inhibit_weights,output_activation,output_activation, dim, wta_itr, epsilon);  
-
         % Create the required change in weights by backpropagation
         dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
         dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
@@ -148,7 +149,7 @@ while (epochs < maxEpochs)
         %Determine judgment at this point to train SoN
         stimulusPresent = false;
         for j = 1:100
-            if (output_activation(j,1) >= 0.5)
+            if (output_activation(j,1) > 0.5)
                stimulusPresent = true; 
             end
         end
@@ -162,6 +163,18 @@ while (epochs < maxEpochs)
             disp(string('Error in determining if FONIsCorrect.'));
         end
         
+        %------------Accuracy of FoN-------------
+         % Set up the target vector according to the FoN's accuracy
+        if (FoNIsCorrect == true) 
+            targetVector = [1;0];
+            fon_Correct(:,i) = targetVector;
+        elseif (FoNIsCorrect == false) 
+            targetVector = [0;1]; 
+            fon_Correct(:,i) = targetVector;
+        else
+            disp(string('Error in generating targetVector in top 1:200 loop.'));
+        end
+        %----------------------------------------
         %----------------SoN---------------
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
@@ -172,31 +185,18 @@ while (epochs < maxEpochs)
         input_to_output_2 = w_co * inputPattern_2;
         output_activation_2 = activation_fn(input_to_output_2);
         
-        %----------------WTA Implementation for FoN-----------------
-        %first type of WTA network
-        inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,length_constant);
-        output_activation_2 = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
-
-        
-        % Set up the target vector according to the FoN's accuracy
-        if (FoNIsCorrect == true) 
-            targetVector = [1;0];
-        elseif (FoNIsCorrect == false) 
-            targetVector = [0;1]; 
-        else
-            disp(string('Error in generating targetVector in top 1:200 loop.'));
-        end
-        
         % Generate the error vector for SoN
         %backpropagate through one set of hidden units
         output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
         dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
+        %(learningConstant, w_fg, inputPattern, w_gh, output_error, hidden_activation)
         
         % Change the weights
-        w_co = w_co + dw_co;
-
+       w_co = w_co + dw_co;
+       son_Output(:,i) = output_activation_2;
+     
     %End of the for loop that runs through all the columns in the matrix
     end
     
@@ -229,11 +229,12 @@ while (epochs < maxEpochs)
     
     % Every 10 epochs, show what the sum of squares is
     if mod(epochs,10) == 0
-       disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
+       %disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
+       %ames commented this out because it was making output too long
     end
     
-    
     %----------------- Outer SoN -----------------
+    
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
     
@@ -255,13 +256,9 @@ while (epochs < maxEpochs)
     % Store the current sum of squares for SoN in the sum of squares store vector
     sseStore_2(epochs,1) = sse_2;
     
-    
     % End of the while loop for the epochs        
 end
 
-
-%w_wta = rand(size(output_activation_2,1)) * 0.1; 
-%wta(1, output_activation_2, w_wta, 150);
 
 %-----------Plot the sse--------------
 % Plot sse for FoN
@@ -275,11 +272,13 @@ end
        ylabel('sse');
        
  % Plot sse for SoN      
- figure(2);
+ %{
+figure(2);
        plot(sseStore_2(1:epochs,1));
        title('SoN ssError Plot');
        xlabel('epoch');
        ylabel('sse_2');
+ %}
 
 
        
@@ -301,7 +300,7 @@ missCount = 0;
 crCount = 0;
 
 %------Set up Subthreshold stimuli for testing--------
-
+%{
 %[Comment chunk below for suprathreshold stimuli, uncomment for
 %subthreshold stimuli]
 
@@ -319,7 +318,7 @@ RandBothInputStore = RandBothInputStore + 0.0012;
 
 %Subtract the noise from the stimulus inputs
 for i = 1:200
-   if(randStimulusLoci(1,i) ~= 0)
+   if(randStimulusLoci(1,i) > 0)
        RandBothInputStore(randStimulusLoci(1,i),i) = RandBothInputStore(randStimulusLoci(1,i),i) - 0.0012;
    elseif (randStimulusLoci(1,i) == 0)
        %Intentionally blank to test for error below
@@ -327,9 +326,8 @@ for i = 1:200
        disp(string('Error in subtracting noise from stimulus.'));
    end
 end
-
 %[Comment/Uncomment for supra/subthreshold stimuli ends]
-
+%}
 %--------Loop for Testing--------
 
 
@@ -356,7 +354,6 @@ for i = 1:200
             end
         end
         
-        
         % Display the results of the decision
         if(stimulusPresent == true)
             disp(string('In pattern ') + i + string(', the stimulus is present.')); 
@@ -379,26 +376,37 @@ for i = 1:200
         end
         
         %--------Decision of SON--------
+        %ames jump here
         
-        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+       
+compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
             
-        % Run the vector through the association matrix
+        %Run the vector through the association matrix
         inputPattern_2 = compMatrix;
         input_to_hidden_2 = w_co * inputPattern_2;
         output_activation_2 = activation_fn(input_to_hidden_2);
         
+        %test_1 = output_activation_2;
+        
+         %----------------WTA Implementation for SoN-----------------
+        %first type of WTA network
+        %inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,max_strength);
+        %output_activation_2_wta = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
+        %output_activation_2_wta = son_Output(:,i);
+        output_activation_2_wta = output_activation_2;
         %Comparison to make a decision
-        if (output_activation_2(1,1) > output_activation_2(2,1))
-            disp(string('      The SoN decision is High wager.'));
-            highWager = true;
-            highWagerCount = highWagerCount + 1;
-        elseif (output_activation_2(1,1) < output_activation_2(2,1))
-            disp(string('      The SoN decision is Low wager.'));
+        if (output_activation_2_wta(1,1) <= output_activation_2_wta(2,1))
+            %disp(string('      The SoN decision is Low wager.'));
             highWager = false;
             lowWagerCount = lowWagerCount + 1;
+        elseif (output_activation_2_wta(1,1) > output_activation_2_wta(2,1))
+            %disp(string('      The SoN decision is High wager.'));
+            highWager = true;
+            highWagerCount = highWagerCount + 1;
         else
              disp(string('Error in making a SoN Decision.'));
         end
+        disp(output_activation_2_wta);
         
         
         % Set up the target vector according to the FoN's accuracy
@@ -412,11 +420,11 @@ for i = 1:200
         
         
         if (highWager == true &&  FoNIsCorrect == true)
-            disp(string('         The SoN assessment is correct!!! :D :D '));
+            disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             hitsCount = hitsCount + 1;
         elseif (highWager == false &&  FoNIsCorrect == false)
-            disp(string('         The SoN assessment is correct!!! :D :D '));
+            disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             crCount = crCount + 1;
         elseif (highWager == true &&  FoNIsCorrect == false)
