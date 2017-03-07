@@ -3,9 +3,10 @@ learningRate = 0.9;
 secondLearningRate = 0.1;
 maxEpochs = 150;
 
-%*****SWITCHES****
+%*****SWITCHES*****
 subthresholdTest  = 0;
-alternativeSigmoidFn2 = 1;
+alternativeSigmoidFoN = 1;
+alternativeSigmoidSoN = 1;
 
 
 %simple counter to store all errors
@@ -94,18 +95,6 @@ for i = 1:200
        correctTrials(i,1) = 1;
    end
    
-   %[Wrong here]
-   %Generate target vectors for SoN
-  %{
-   if (correctTrials(i,1) == 1)
-       targetVectorStore(:,i) = [1; 0];
-   elseif (correctTrials(i,1) == 0)
-        targetVectorStore(:,i) = [0; 1];   
-   else
-       disp(string('Error with generating target vector.'));
-   end   
-   %}
-   
 end
 %--------Randomly Generate the weights for FoN---------
 w_fg = (rand([60 100])*2)-1;
@@ -131,12 +120,19 @@ while (epochs < maxEpochs)
         %----------------FoN---------------
 
         %Run the vector through the assocation matrix one at a time
-        inputPattern = RandBothInputStore(:,i);
-        input_to_hidden = w_fg * inputPattern; %60
-        hidden_activation = activation_fn(input_to_hidden);
-        input_to_output = w_gh * hidden_activation; %100
-        output_activation = activation_fn(input_to_output);
-        
+        if (alternativeSigmoidFoN == 0)
+            inputPattern = RandBothInputStore(:,i);
+            input_to_hidden = w_fg * inputPattern; %60
+            hidden_activation = activation_fn(input_to_hidden);
+            input_to_output = w_gh * hidden_activation; %100
+            output_activation = activation_fn(input_to_output);
+        elseif (alternativeSigmoidFoN == 1)
+            inputPattern = RandBothInputStore(:,i);
+            input_to_hidden = w_fg * inputPattern; %60
+            hidden_activation = activation_fn_2(input_to_hidden);
+            input_to_output = w_gh * hidden_activation; %100
+            output_activation = activation_fn_2(input_to_output);
+        end
         %Store the output_activation into output_activation_store
         output_activation_store(:,i) = output_activation;
 
@@ -144,9 +140,13 @@ while (epochs < maxEpochs)
         output_error = RandBothTargetStore(:,i) - output_activation;
      
         % Create the required change in weights by backpropagation
-        dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
-        dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
-
+        if (alternativeSigmoidFoN == 0)
+            dw_fg = changeW_FG(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
+            dw_gh = changeW_GH(learningRate,w_gh,hidden_activation,output_error);    
+        elseif (alternativeSigmoidFoN == 1)
+            dw_fg = changeW_FG2(learningRate, w_fg, inputPattern, w_gh, output_error, hidden_activation);
+            dw_gh = changeW_GH2(learningRate,w_gh,hidden_activation,output_error); 
+        end
         % Add the changes to the current weights to fix them
         w_fg = w_fg + dw_fg;
         w_gh = w_gh + dw_gh;
@@ -188,9 +188,9 @@ while (epochs < maxEpochs)
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         input_to_output_2 = w_co * inputPattern_2;
-        if (alternativeSigmoidFn2 == 0)
+        if (alternativeSigmoidSoN == 0)
             output_activation_2 = activation_fn(input_to_output_2);
-        elseif (alternativeSigmoidFn2 == 1)
+        elseif (alternativeSigmoidSoN == 1)
             output_activation_2 = activation_fn_2(input_to_output_2);
         end
         
@@ -200,9 +200,9 @@ while (epochs < maxEpochs)
         
         % Calculate the desired change in weights for w_co
         
-        if (alternativeSigmoidFn2 == 0)
+        if (alternativeSigmoidSoN == 0)
             dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
-        elseif (alternativeSigmoidFn2 == 1)
+        elseif (alternativeSigmoidSoN == 1)
             dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
         end
         
@@ -218,11 +218,19 @@ while (epochs < maxEpochs)
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
     % the associator at this epoch.
-    inputPatternOuter = RandBothInputStore;
-    input_to_hidden_outer = w_fg*inputPatternOuter;
-    hidden_activation_outer = activation_fn(input_to_hidden_outer);
-    input_to_output_outer = w_gh*hidden_activation_outer;
-    output_activation_outer = activation_fn(input_to_output_outer);
+    if (alternativeSigmoidFoN == 0)
+        inputPatternOuter = RandBothInputStore;
+        input_to_hidden_outer = w_fg*inputPatternOuter;
+        hidden_activation_outer = activation_fn(input_to_hidden_outer);
+        input_to_output_outer = w_gh*hidden_activation_outer;
+        output_activation_outer = activation_fn(input_to_output_outer);
+    elseif (alternativeSigmoidFoN == 1)
+        inputPatternOuter = RandBothInputStore;
+        input_to_hidden_outer = w_fg*inputPatternOuter;
+        hidden_activation_outer = activation_fn_2(input_to_hidden_outer);
+        input_to_output_outer = w_gh*hidden_activation_outer;
+        output_activation_outer = activation_fn_2(input_to_output_outer);
+    end
     
     %[Wrong here]
     %Calculate the error for the entire matrix for FoN
@@ -256,10 +264,9 @@ while (epochs < maxEpochs)
     % Run the entire thing through the SoN to test, like FoN above
     inputPatternOuter_2 = compMatrix;
     input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
-    %[Choice of activation fn]
-    if (alternativeSigmoidFn2 == 0)
+    if (alternativeSigmoidSoN == 0)
         output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
-    elseif (alternativeSigmoidFn2 == 1)
+    elseif (alternativeSigmoidSoN == 1)
         output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
     end
     
@@ -281,11 +288,11 @@ end
 
 %Plot the sse
 
- figure(1);
-       plot(sseStore(1:epochs,1));
-       title('FoN ssError Plot');
-       xlabel('epoch');
-       ylabel('sse');
+%  figure(1);
+%        plot(sseStore(1:epochs,1));
+%        title('FoN ssError Plot');
+%        xlabel('epoch');
+%        ylabel('sse');
        
  % Plot sse for SoN      
  %{
@@ -355,12 +362,18 @@ for i = 1:200
 
         %Run the vector through the assocation matrix
         inputPattern = RandBothInputStore(:,i);%new_fon(:,i);
-   
-        input_to_hidden = w_fg * inputPattern;
-        hidden_activation = activation_fn(input_to_hidden);
-        input_to_output = w_gh * hidden_activation;
-        output_activation = activation_fn(input_to_output);
         
+        if (alternativeSigmoidFoN == 0)
+            input_to_hidden = w_fg * inputPattern;
+            hidden_activation = activation_fn(input_to_hidden);
+            input_to_output = w_gh * hidden_activation;
+            output_activation = activation_fn(input_to_output);
+        elseif (alternativeSigmoidFoN == 1)
+            input_to_hidden = w_fg * inputPattern;
+            hidden_activation = activation_fn_2(input_to_hidden);
+            input_to_output = w_gh * hidden_activation;
+            output_activation = activation_fn_2(input_to_output);
+        end
         %Set Boolean switch to noise by default until it encounters a value
         %that is above threshold
         stimulusPresent = false;
@@ -403,9 +416,9 @@ for i = 1:200
         inputPattern_2 = compMatrix;
         input_to_hidden_2 = w_co * inputPattern_2;
         
-        if (alternativeSigmoidFn2 == 0)
+        if (alternativeSigmoidSoN == 0)
             output_activation_2 = activation_fn(input_to_hidden_2);
-        elseif (alternativeSigmoidFn2 == 1)
+        elseif (alternativeSigmoidSoN == 1)
             output_activation_2 = activation_fn_2(input_to_hidden_2);
         end
         
@@ -470,11 +483,17 @@ else
     disp(string('Error in determining the kind of test.'))
 end
 %Display if alternative sigmoid function
-if (alternativeSigmoidFn2 == 0)
-    disp(string('Usual sigmoid function.'));
-elseif (alternativeSigmoidFn2 == 1)
-    disp(string('Alternative sigmoid function.')); 
+if (alternativeSigmoidFoN == 0)
+    disp(string('FoN: Usual sigmoid function.'));
+elseif (alternativeSigmoidFoN == 1)
+    disp(string('FoN: Alternative sigmoid function.')); 
 end
+if (alternativeSigmoidSoN == 0)
+    disp(string('SoN: Usual sigmoid function.'));
+elseif (alternativeSigmoidSoN == 1)
+    disp(string('SoN: Alternative sigmoid function.')); 
+end
+
 disp(' ');
 
 %Display total correct assessments
