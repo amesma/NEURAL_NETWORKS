@@ -1,11 +1,16 @@
 %--------Set parameters---------
 learningRate = 0.9;
 secondLearningRate = 0.1;
-maxEpochs = 16;
+maxEpochs = 150;
+
+%*****SWITCHES****
+subthresholdTest  = 0;
+alternativeSigmoidFn2 = 1;
+
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
-secondNetUnit = 0;
+%secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
 
 %----------Winner Take All Parameters (first type of network)-------
@@ -183,15 +188,23 @@ while (epochs < maxEpochs)
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         input_to_output_2 = w_co * inputPattern_2;
-        output_activation_2 = activation_fn(input_to_output_2);
+        if (alternativeSigmoidFn2 == 0)
+            output_activation_2 = activation_fn(input_to_output_2);
+        elseif (alternativeSigmoidFn2 == 1)
+            output_activation_2 = activation_fn_2(input_to_output_2);
+        end
         
         % Generate the error vector for SoN
         %backpropagate through one set of hidden units
         output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
-        dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
-        %(learningConstant, w_fg, inputPattern, w_gh, output_error, hidden_activation)
+        
+        if (alternativeSigmoidFn2 == 0)
+            dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
+        elseif (alternativeSigmoidFn2 == 1)
+            dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
+        end
         
         % Change the weights
        w_co = w_co + dw_co;
@@ -217,8 +230,6 @@ while (epochs < maxEpochs)
     
     % Calculate the sum of squares for FoN
     sse = trace(output_error_outer' * output_error_outer);
-    %[Uncomment below to show sse per epoch]
-    %disp(string('sse is ')); disp(sse);
     
     % Increment the epochs to keep track of the current epoch and to see if
     %the maximum epoch has been reached
@@ -245,7 +256,12 @@ while (epochs < maxEpochs)
     % Run the entire thing through the SoN to test, like FoN above
     inputPatternOuter_2 = compMatrix;
     input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
-    output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
+    %[Choice of activation fn]
+    if (alternativeSigmoidFn2 == 0)
+        output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
+    elseif (alternativeSigmoidFn2 == 1)
+        output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
+    end
     
     % Calculate the error for the entire matrix for SoN
     output_error_outer_2 = targetVectorStore - output_activation_outer_2;
@@ -300,34 +316,36 @@ missCount = 0;
 crCount = 0;
 
 %------Set up Subthreshold stimuli for testing--------
-%{
+
 %[Comment chunk below for suprathreshold stimuli, uncomment for
 %subthreshold stimuli]
+if (subthresholdTest == true)
+    disp(string('Testing Subthreshold Stimuli'));
+    randStimulusLoci = zeros(1,200);
+    for i = 1:200
+        for j = 1:100
+           if(RandBothTargetStore(j,i) == 1)
+              randStimulusLoci(1,i) = j; 
+           end
+        end
+    end
 
-randStimulusLoci = zeros(1,200);
-for i = 1:200
-    for j = 1:100
-       if(RandBothTargetStore(j,i) == 1)
-          randStimulusLoci(1,i) = j; 
+    %Add noise (+0.0012) to every input of the FoN
+    RandBothInputStore = RandBothInputStore + 0.0012;
+
+    %Subtract the noise from the stimulus inputs
+    for i = 1:200
+       if(randStimulusLoci(1,i) > 0)
+           RandBothInputStore(randStimulusLoci(1,i),i) = RandBothInputStore(randStimulusLoci(1,i),i) - 0.0012;
+       elseif (randStimulusLoci(1,i) == 0)
+           %Intentionally blank to test for error below
+       else
+           disp(string('Error in subtracting noise from stimulus.'));
        end
     end
 end
-
-%Add noise (+0.0012) to every input of the FoN
-RandBothInputStore = RandBothInputStore + 0.0012;
-
-%Subtract the noise from the stimulus inputs
-for i = 1:200
-   if(randStimulusLoci(1,i) > 0)
-       RandBothInputStore(randStimulusLoci(1,i),i) = RandBothInputStore(randStimulusLoci(1,i),i) - 0.0012;
-   elseif (randStimulusLoci(1,i) == 0)
-       %Intentionally blank to test for error below
-   else
-       disp(string('Error in subtracting noise from stimulus.'));
-   end
-end
 %[Comment/Uncomment for supra/subthreshold stimuli ends]
-%}
+
 %--------Loop for Testing--------
 
 
@@ -379,12 +397,17 @@ for i = 1:200
         %ames jump here
         
        
-compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
             
         %Run the vector through the association matrix
         inputPattern_2 = compMatrix;
         input_to_hidden_2 = w_co * inputPattern_2;
-        output_activation_2 = activation_fn(input_to_hidden_2);
+        
+        if (alternativeSigmoidFn2 == 0)
+            output_activation_2 = activation_fn(input_to_hidden_2);
+        elseif (alternativeSigmoidFn2 == 1)
+            output_activation_2 = activation_fn_2(input_to_hidden_2);
+        end
         
         %test_1 = output_activation_2;
         
@@ -436,6 +459,24 @@ compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
         end
              
 end
+
+%Display if subthreshold test or suprathreshold test
+disp(' ');
+if subthresholdTest == true
+    disp(string('Subthreshold Test:'))
+elseif subthresholdTest == false
+    disp(string('Suprathreshold Test:'))
+else
+    disp(string('Error in determining the kind of test.'))
+end
+%Display if alternative sigmoid function
+if (alternativeSigmoidFn2 == 0)
+    disp(string('Usual sigmoid function.'));
+elseif (alternativeSigmoidFn2 == 1)
+    disp(string('Alternative sigmoid function.')); 
+end
+disp(' ');
+
 %Display total correct assessments
 disp('Correct assessment for FoN');
 disp(correctAssess/2);
