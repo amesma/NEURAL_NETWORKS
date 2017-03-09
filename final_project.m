@@ -5,8 +5,9 @@ maxEpochs = 150;
 
 %*****SWITCHES*****
 subthresholdTest  = 0;
-alternativeSigmoidFoN = 1;
-alternativeSigmoidSoN = 1;
+alternativeSigmoidFoN = 0;
+alternativeSigmoidSoN = 0;
+sigmoidForComparatorMatrix = 0;
 
 
 %simple counter to store all errors
@@ -187,6 +188,14 @@ while (epochs < maxEpochs)
         
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
+        if (sigmoidForComparatorMatrix == 1)
+            if (alternativeSigmoidSoN == 0)
+                inputPattern_2 = activation_fn(inputPattern_2);
+            elseif (alternativeSigmoidSoN == 1)
+                inputPattern_2 = activation_fn_2(inputPattern_2);
+            end
+        end
+        
         input_to_output_2 = w_co * inputPattern_2;
         if (alternativeSigmoidSoN == 0)
             output_activation_2 = activation_fn(input_to_output_2);
@@ -263,6 +272,13 @@ while (epochs < maxEpochs)
     
     % Run the entire thing through the SoN to test, like FoN above
     inputPatternOuter_2 = compMatrix;
+    if (sigmoidForComparatorMatrix == 1)
+        if (alternativeSigmoidSoN == 0)
+            inputPatternOuter_2 = activation_fn(inputPatternOuter_2);
+        elseif (alternativeSigmoidSoN == 1)
+            inputPatternOuter_2 = activation_fn_2(inputPatternOuter_2);
+        end
+    end
     input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
     if (alternativeSigmoidSoN == 0)
         output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
@@ -288,11 +304,11 @@ end
 
 %Plot the sse
 
-%  figure(1);
-%        plot(sseStore(1:epochs,1));
-%        title('FoN ssError Plot');
-%        xlabel('epoch');
-%        ylabel('sse');
+ figure(1);
+       plot(sseStore(1:epochs,1));
+       title('FoN ssError Plot');
+       xlabel('epoch');
+       ylabel('sse');
        
  % Plot sse for SoN      
  %{
@@ -355,6 +371,11 @@ end
 
 %--------Loop for Testing--------
 
+%Changeinput to test network=======================================
+
+%RandBothInputStore(100,200) = -1;
+
+
 
 for i = 1:200
     
@@ -409,11 +430,18 @@ for i = 1:200
         %--------Decision of SON--------
         %ames jump here
         
-       
+       output_activation_store(100,200) = 1;
         compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
             
         %Run the vector through the association matrix
         inputPattern_2 = compMatrix;
+        if (sigmoidForComparatorMatrix == 1)
+            if (alternativeSigmoidSoN == 0)
+                inputPattern_2 = activation_fn(inputPattern_2);
+            elseif (alternativeSigmoidSoN == 1)
+                inputPattern_2 = activation_fn_2(inputPattern_2);
+            end
+        end
         input_to_hidden_2 = w_co * inputPattern_2;
         
         if (alternativeSigmoidSoN == 0)
@@ -430,6 +458,7 @@ for i = 1:200
         %output_activation_2_wta = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
         %output_activation_2_wta = son_Output(:,i);
         output_activation_2_wta = output_activation_2;
+
         %Comparison to make a decision
         if (output_activation_2_wta(1,1) <= output_activation_2_wta(2,1))
             %disp(string('      The SoN decision is Low wager.'));
