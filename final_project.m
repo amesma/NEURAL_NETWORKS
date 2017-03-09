@@ -3,12 +3,12 @@ learningRate = 0.9;
 secondLearningRate = 0.1;
 maxEpochs = 150;
 
+
 %*****SWITCHES*****
 subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
-
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
@@ -185,7 +185,7 @@ while (epochs < maxEpochs)
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
-        
+        sum_1 = mean(abs(comparisonMatrix));
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         if (sigmoidForComparatorMatrix == 1)
@@ -205,7 +205,7 @@ while (epochs < maxEpochs)
         
         % Generate the error vector for SoN
         %backpropagate through one set of hidden units
-        output_error_2 = targetVector - output_activation_2;
+        output_error_2 = sum_1 - output_activation_2;
         
         % Calculate the desired change in weights for w_co
         
@@ -400,7 +400,7 @@ for i = 1:200
         stimulusPresent = false;
         
         for j = 1:100
-            if (output_activation(j,1) >= 0.5)
+            if (output_activation_store(j,i) > 0.5)
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
@@ -430,10 +430,13 @@ for i = 1:200
         %--------Decision of SON--------
         %ames jump here
         
+
        output_activation_store(100,200) = 1;
+
         compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
             
         %Run the vector through the association matrix
+        %{
         inputPattern_2 = compMatrix;
         if (sigmoidForComparatorMatrix == 1)
             if (alternativeSigmoidSoN == 0)
@@ -451,16 +454,21 @@ for i = 1:200
         end
         
         %test_1 = output_activation_2;
-        
+        %}
          %----------------WTA Implementation for SoN-----------------
         %first type of WTA network
         %inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,max_strength);
         %output_activation_2_wta = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
+
         %output_activation_2_wta = son_Output(:,i);
         output_activation_2_wta = output_activation_2;
 
+
+        output_activation_2_wta = son_Output(:,i);
+        %output_activation_2_wta = output_activation_2;
+
         %Comparison to make a decision
-        if (output_activation_2_wta(1,1) <= output_activation_2_wta(2,1))
+        if (output_activation_2_wta(1,1) < output_activation_2_wta(2,1))
             %disp(string('      The SoN decision is Low wager.'));
             highWager = false;
             lowWagerCount = lowWagerCount + 1;
@@ -472,7 +480,6 @@ for i = 1:200
              disp(string('Error in making a SoN Decision.'));
         end
         disp(output_activation_2_wta);
-        
         
         % Set up the target vector according to the FoN's accuracy
         if (FoNIsCorrect == true) 
