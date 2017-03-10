@@ -4,13 +4,21 @@ secondLearningRate = 0.1;
 maxEpochs = 150;
 %*****SWITCHES*****
 subthresholdTest  = 0;
-alternativeSigmoidFoN = 1;
-alternativeSigmoidSoN = 1;
+alternativeSigmoidFoN = 0;
+alternativeSigmoidSoN = 0;
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 %secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
+
+
+%Array of correct second order network 
+%ames
+    son_correct = zeros(maxEpochs);
+    vector_correct = zeros(200,1);
+%
+
 
 %----------Winner Take All Parameters (first type of network)-------
 %not changing
@@ -94,8 +102,14 @@ for i = 1:200
    end
    
 end
+
+% examples ames
+% RandBothTargetStore(:,200) = zeros(100,1);
+% RandBothTargetStore(100,200) = 1;
+% RandBothInputStore(:,200) = rand(100,1)/50;
+
 %--------Randomly Generate the weights for FoN---------
-w_fg = (rand([60 100])*2)-1;
+w_fg = (rand([60 100])* 2)-1;
 w_gh = (rand([100 60])*2)-1;
 
 %--------Randomly Generate the weights for SoN---------
@@ -154,6 +168,7 @@ while (epochs < maxEpochs)
         for j = 1:100
             if (output_activation(j,1) > 0.5)
                stimulusPresent = true; 
+               break
             end
         end
         
@@ -182,7 +197,7 @@ while (epochs < maxEpochs)
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
-        sum_1 = mean(abs(comparisonMatrix));
+       % sum_1 = mean(abs(comparisonMatrix));
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         input_to_output_2 = w_co * inputPattern_2;
@@ -192,9 +207,21 @@ while (epochs < maxEpochs)
             output_activation_2 = activation_fn_2(input_to_output_2);
         end
         
+        if (output_activation_2(1,1) > output_activation(2,1))
+            wager = 1;
+        else
+            wager = 0;
+        end
+        %ames
+        if ((FoNIsCorrect == true && wager == 1)||(FoNIsCorrect == false && wager == 0))
+            vector_correct(i) = 1;
+        else
+            vector_correct(i) = 0;
+        end
+        
         % Generate the error vector for SoN
         %backpropagate through one set of hidden units
-        output_error_2 = sum_1 - output_activation_2;
+        output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
         
@@ -277,7 +304,9 @@ while (epochs < maxEpochs)
     % Store the current sum of squares for SoN in the sum of squares store vector
     sseStore_2(epochs,1) = sse_2;
     
-    % End of the while loop for the epochs        
+    % End of the while loop for the epochs   
+    son_correct(epochs) = mean(vector_correct);
+    vector_correct = zeros(200,1);
 end
 
 
@@ -301,14 +330,11 @@ figure(2);
        ylabel('sse_2');
  %}
 
-
-       
 %--------Create Counters for the testing loop--------
        
 %Create counter for correct assessments
 correctAssess = 0;
 correctAssess_2 = 0;
-
 
 % Create counters for high and low wagers
 highWagerCount = 0;
@@ -353,7 +379,6 @@ end
 
 %--------Loop for Testing--------
 
-
 for i = 1:200
     
         %--------Decision of FON--------
@@ -397,18 +422,27 @@ for i = 1:200
         
         if((correctTrials(i,1) == 1 && stimulusPresent == true) || (correctTrials(i,1) == 0 && stimulusPresent == false))
             correctAssess = correctAssess + 1;
-            disp(string('   ++ This assessment is correct.'));
+            disp(string('   ++ This FON assessment is correct.'));
             FoNIsCorrect = true;
         else
-            disp(string('   -- This assessment is incorrect.'));
+            disp(string('   -- This FON assessment is incorrect.'));
             FoNIsCorrect = false;
         end
         
         %--------Decision of SON--------
-        %ames jump here
+        %
         
         compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
-            
+      % False Alarm test
+%         if (i == 200)
+%            compMatrix(100) = -1;
+%            FoNIsCorrect = false;
+%         end
+       
+       %Miss test
+    %   if (i == 200)
+     %      compMatrix(100) = -1;
+      % end
         %Run the vector through the association matrix
         %{
         inputPattern_2 = compMatrix;
@@ -451,14 +485,15 @@ for i = 1:200
             disp(string('Error in generating targetVector in bottom 1:200 loop.'));
         end
         
-        
         if (highWager == true &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is correct!!! '));
-            correctAssess_2 = correctAssess_2 + 1;   
+            correctAssess_2 = correctAssess_2 + 1;
             hitsCount = hitsCount + 1;
+           
         elseif (highWager == false &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is correct!!! '));
-            correctAssess_2 = correctAssess_2 + 1;   
+            correctAssess_2 = correctAssess_2 + 1; 
+        
             crCount = crCount + 1;
         elseif (highWager == true &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is incorrect.... '));
@@ -510,3 +545,4 @@ disp(string('False Alarms Count: ') + faCount/2);
 disp(string('Correct Rejection Count: ') + crCount/2);
 disp(string('Miss Count: ') + missCount/2);
 
+plot(son_correct);
