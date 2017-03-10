@@ -85,6 +85,7 @@ correctTrials = zeros(200,1);
 %Create a store for the Target Vectors of SoN
 targetVectorStore = zeros(2,200);
 
+
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
 for i = 1:200
@@ -114,11 +115,23 @@ sseStore_2 = zeros(maxEpochs,1);
 % Create a store for the output_activations of FoN
 output_activation_store = zeros(100,200);
 
+%Create a store for performance every epoch
+epochPerformanceStoreFoN = zeros(maxEpochs,1);
+epochPerformanceStoreSoN = zeros(maxEpochs,1);
+
+%Create a store for performance for every vector
+tempPerformanceStoreFoN = zeros(200,1);
+tempPerformanceStoreSoN = zeros(200,1);
+
+%--------------------------START OF ALL TRAINING-----------------------------
+
 while (epochs < maxEpochs)
     %Pre-Training of Data
     for i = 1:200
         
-        %----------------FoN---------------
+        %----------------------------------------------------
+        %----------------FoN within 1:200 loop---------------
+        %----------------------------------------------------
 
         %Run the vector through the assocation matrix one at a time
         if (alternativeSigmoidFoN == 0)
@@ -162,9 +175,11 @@ while (epochs < maxEpochs)
         
         % Determine if the FoN is making a correct judgment
         if ((stimulusPresent == true && correctTrials(i,1) == 1) || (stimulusPresent == false && correctTrials(i,1) == 0))
-           FoNIsCorrect = true; 
+           FoNIsCorrect = true;
+           tempPerformanceStoreFoN(i,1) = 1;
         elseif  ((stimulusPresent == true && correctTrials(i,1) == 0) || (stimulusPresent == false && correctTrials(i,1) == 1))
            FoNIsCorrect = false;
+           tempPerformanceStoreFoN(i,1) = 0;
         else
             disp(string('Error in determining if FONIsCorrect.'));
         end
@@ -180,12 +195,16 @@ while (epochs < maxEpochs)
         else
             disp(string('Error in generating targetVector in top 1:200 loop.'));
         end
-        %----------------------------------------
-        %----------------SoN---------------
+        
+        %----------------------------------------------------
+        %----------------SoN within 1:200 loop---------------
+        %----------------------------------------------------
+        
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
         sum_1 = mean(abs(comparisonMatrix));
+        
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         if (sigmoidForComparatorMatrix == 1)
@@ -203,7 +222,22 @@ while (epochs < maxEpochs)
             output_activation_2 = activation_fn_2(input_to_output_2);
         end
         
-        % Generate the error vector for SoN
+        %Determine SoN decision
+        if (output_activation_2(1,1) < output_activation_2(2,1))
+            highWager = false;
+        elseif (output_activation_2_wta(1,1) > output_activation_2_wta(2,1))
+            highWager = true;
+        end
+        
+        %Determine is SoN is correct
+        if((FoNIsCorrect == true && highWager == true)||(FoNIsCorrect == false && highWager == false))
+            tempPerformanceStoreSoN(i,1) = 1;
+        elseif ((FoNIsCorrect == true && highWager == false)||(FoNIsCorrect == false && highWager == true))
+            tempPerformanceStoreSoN(i,1) = 0;
+        end
+        
+        
+        %Generate the error vector for SoN
         %backpropagate through one set of hidden units
         %output_error_2 = sum_1 - output_activation_2;
         output_error_2 = targetVector - output_activation_2;
@@ -222,8 +256,21 @@ while (epochs < maxEpochs)
      
     %End of the for loop that runs through all the columns in the matrix
     end
+    %*******************************************************************
+    %********************START OF OUTER LOOP****************************
+    %*******************************************************************
     
-    % ---------Outer FoN---------
+    % Increment the epochs to keep track of the current epoch and to see if
+    %the maximum epoch has been reached
+    epochs = epochs + 1;
+    
+    %----------------------------------------
+    % ---------------Outer FoN---------------
+    %----------------------------------------
+    
+    %Store the FoN proportion correct in this epoch into the performance
+    %store
+    epochPerformanceStoreFoN(epochs,1) = mean(tempPerformanceStoreFoN);
     
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
@@ -242,16 +289,15 @@ while (epochs < maxEpochs)
         output_activation_outer = activation_fn_2(input_to_output_outer);
     end
     
-    %[Wrong here]
+      
+    
     %Calculate the error for the entire matrix for FoN
     output_error_outer = RandBothTargetStore - output_activation_outer;
     
     % Calculate the sum of squares for FoN
     sse = trace(output_error_outer' * output_error_outer);
     
-    % Increment the epochs to keep track of the current epoch and to see if
-    %the maximum epoch has been reached
-    epochs = epochs + 1;
+
     
     % Store the current sum of squares for FoN in the sum of squares store vector
     sseStore(epochs,1) = sse;
@@ -262,7 +308,13 @@ while (epochs < maxEpochs)
        %ames commented this out because it was making output too long
     end
     
-    %----------------- Outer SoN -----------------
+    %----------------------------------------
+    % ---------------Outer SoN---------------
+    %----------------------------------------  
+    
+    %Store the FoN proportion correct in this epoch into the performance
+    %store
+    epochPerformanceStoreSoN(epochs,1) = mean(tempPerformanceStoreSoN);
     
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
@@ -299,18 +351,20 @@ while (epochs < maxEpochs)
     % End of the while loop for the epochs        
 end
 
+%--------------------------END OF ALL TRAINING-----------------------------
+
 
 %-----------Plot the sse--------------
 % Plot sse for FoN
 
 %Plot the sse
-
+%{
  figure(1);
        plot(sseStore(1:epochs,1));
        title('FoN ssError Plot');
        xlabel('epoch');
        ylabel('sse');
-       
+   %}    
  % Plot sse for SoN      
  %{
 figure(2);
@@ -321,6 +375,10 @@ figure(2);
  %}
 
 
+
+ 
+ 
+ 
        
 %--------Create Counters for the testing loop--------
        
@@ -526,7 +584,22 @@ for i = 1:200
         end
              
 end
+%----------------------END OF TESTING------------------------------------
 
+
+
+%Plot the performance per epoch
+plot(epochPerformanceStoreFoN);
+hold;
+plot(epochPerformanceStoreSoN);
+ylim([0 1]);
+title('Performance in Recognition and Wagering');
+       xlabel('epoch');
+       ylabel('Performance');
+       xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
+
+ 
+ 
 %Display if subthreshold test or suprathreshold test
 disp(' ');
 if subthresholdTest == true
