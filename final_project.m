@@ -205,7 +205,8 @@ while (epochs < maxEpochs)
         
         % Generate the error vector for SoN
         %backpropagate through one set of hidden units
-        output_error_2 = sum_1 - output_activation_2;
+        %output_error_2 = sum_1 - output_activation_2;
+        output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
         
@@ -333,10 +334,16 @@ highWagerCount = 0;
 lowWagerCount = 0;
 
 % Create counters for SDT
-hitsCount = 0;
-faCount = 0;
-missCount = 0;
-crCount = 0;
+hitsCountFoN= 0;
+faCountFoN = 0;
+missCountFoN = 0;
+crCountFoN = 0;
+
+
+hitsCountSoN= 0;
+faCountSoN = 0;
+missCountSoN = 0;
+crCountSoN = 0;
 
 %------Set up Subthreshold stimuli for testing--------
 
@@ -418,13 +425,24 @@ for i = 1:200
         % Determine the correct answer and set the boolean value to reflect
         % accuracy
         
-        if((correctTrials(i,1) == 1 && stimulusPresent == true) || (correctTrials(i,1) == 0 && stimulusPresent == false))
+        if(correctTrials(i,1) == 1 && stimulusPresent == true)
             correctAssess = correctAssess + 1;
             disp(string('   ++ This assessment is correct.'));
             FoNIsCorrect = true;
-        else
+            hitsCountFoN = hitsCountFoN + 1;
+        elseif (correctTrials(i,1) == 0 && stimulusPresent == false)
+            correctAssess = correctAssess + 1;
+            disp(string('   ++ This assessment is correct.'));
+            FoNIsCorrect = true;
+            crCountFoN = crCountFoN + 1;
+        elseif (correctTrials(i,1) == 1 && stimulusPresent == false)
             disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
+            missCountFoN = missCountFoN + 1;
+        elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
+            disp(string('   -- This assessment is incorrect.'));
+            FoNIsCorrect = false;
+            faCountFoN = faCountFoN + 1;
         end
         
         %--------Decision of SON--------
@@ -494,17 +512,17 @@ for i = 1:200
         if (highWager == true &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
-            hitsCount = hitsCount + 1;
+            hitsCountSoN = hitsCountSoN + 1;
         elseif (highWager == false &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
-            crCount = crCount + 1;
+            crCountSoN = crCountSoN + 1;
         elseif (highWager == true &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is incorrect.... '));
-            faCount = faCount + 1;
+            faCountSoN = faCountSoN + 1;
         elseif (highWager == false &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is incorrect.... '));
-            missCount = missCount + 1;
+            missCountSoN = missCountSoN + 1;
         end
              
 end
@@ -529,7 +547,14 @@ if (alternativeSigmoidSoN == 0)
 elseif (alternativeSigmoidSoN == 1)
     disp(string('SoN: Alternative sigmoid function.')); 
 end
+disp(' ');
 
+%Display SDT numbers for FoN
+disp(string('FoN:'));
+disp(string('Hits Count: ') + hitsCountFoN/2);
+disp(string('False Alarms Count: ') + faCountFoN/2);
+disp(string('Correct Rejection Count: ') + crCountFoN/2);
+disp(string('Miss Count: ') + missCountFoN/2);
 disp(' ');
 
 %Display total correct assessments
@@ -538,14 +563,16 @@ disp(correctAssess/2);
 disp('Correct assessment for SoN');
 disp(correctAssess_2/2);
 
+
 %Display wager count
 disp(string('High Wager Count: ') + highWagerCount/2);
 disp(string('Low Wager Count: ') + lowWagerCount/2);
 disp(' ');
 
-%Display SDT numbers
-disp(string('Hits Count: ') + hitsCount/2);
-disp(string('False Alarms Count: ') + faCount/2);
-disp(string('Correct Rejection Count: ') + crCount/2);
-disp(string('Miss Count: ') + missCount/2);
+%Display SDT numbers for SoN
+disp(string('SoN:'));
+disp(string('Hits Count: ') + hitsCountSoN/2);
+disp(string('False Alarms Count: ') + faCountSoN/2);
+disp(string('Correct Rejection Count: ') + crCountSoN/2);
+disp(string('Miss Count: ') + missCountSoN/2);
 
