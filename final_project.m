@@ -1,3 +1,6 @@
+%----Shuffle the random number generator----
+rng('shuffle');
+
 %--------Set parameters---------
 learningRate = 0.9;
 secondLearningRate = 0.1;
@@ -9,6 +12,7 @@ subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
+manyRuns = 1;
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
@@ -27,6 +31,23 @@ epsilon = 2.3; %keep
 length_constant = 0.85;
 wta_itr = 10;
 max_strength = 5;
+
+
+%-----Massive Loop for 15 runs-----
+runs = 0;
+
+if(manyRuns == 1)
+    maxRuns = 15;
+elseif (manyRuns == 0)
+    maxRuns = 1;
+end
+
+%Huge matrix to store all the FoN and SoN accuracy rates across the runs
+runsPerformanceStoreFoN = zeros(maxEpochs,maxRuns);
+runsPerformanceStoreSoN = zeros(maxEpochs,maxRuns);
+
+while (runs < maxRuns)
+runs = runs + 1;
 
 %--------Randomly Generate the input for Pre-Training---------
 
@@ -225,7 +246,7 @@ while (epochs < maxEpochs)
         %Determine SoN decision
         if (output_activation_2(1,1) < output_activation_2(2,1))
             highWager = false;
-        elseif (output_activation_2_wta(1,1) > output_activation_2_wta(2,1))
+        elseif (output_activation_2(1,1) > output_activation_2(2,1))
             highWager = true;
         end
         
@@ -272,6 +293,9 @@ while (epochs < maxEpochs)
     %store
     epochPerformanceStoreFoN(epochs,1) = mean(tempPerformanceStoreFoN);
     
+    %Store into the performance store for Runs
+    runsPerformanceStoreFoN(:,runs) = epochPerformanceStoreFoN;
+    
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
     % the associator at this epoch.
@@ -315,6 +339,9 @@ while (epochs < maxEpochs)
     %Store the FoN proportion correct in this epoch into the performance
     %store
     epochPerformanceStoreSoN(epochs,1) = mean(tempPerformanceStoreSoN);
+    
+    %Store into the performance for Runs
+    runsPerformanceStoreSoN(:,runs) = epochPerformanceStoreSoN;
     
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
@@ -587,7 +614,7 @@ end
 %----------------------END OF TESTING------------------------------------
 
 
-
+%{
 %Plot the performance per epoch
 plot(epochPerformanceStoreFoN);
 hold;
@@ -597,8 +624,9 @@ title('Performance in Recognition and Wagering');
        xlabel('epoch');
        ylabel('Performance');
        xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
+       legend('First Order Network', 'Second Order Network');
 
- 
+ %}
  
 %Display if subthreshold test or suprathreshold test
 disp(' ');
@@ -649,3 +677,21 @@ disp(string('False Alarms Count: ') + faCountSoN/2);
 disp(string('Correct Rejection Count: ') + crCountSoN/2);
 disp(string('Miss Count: ') + missCountSoN/2);
 
+end
+%^^^ This end here belongs to the massive while loop all the way at the top
+%(for number of runs, line 45 or so.)
+
+%average out the performances for each epoch
+averagePerformanceFoN = mean(runsPerformanceStoreFoN,2);
+averagePerformanceSoN = mean(runsPerformanceStoreSoN,2);
+
+%Plot the performance per epoch
+plot(averagePerformanceFoN);
+hold;
+plot(averagePerformanceSoN);
+ylim([0 1]);
+title('Performance in Recognition and Wagering');
+       xlabel('epoch');
+       ylabel('Performance');
+       xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
+       legend('First Order Network', 'Second Order Network');
