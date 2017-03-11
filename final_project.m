@@ -1,3 +1,7 @@
+%%%%%%%%%%%%%%%%%%%%%%
+%  LESIONED NETWORK  %
+%%%%%%%%%%%%%%%%%%%%%%
+
 %----Shuffle the random number generator----
 rng('shuffle');
 
@@ -13,6 +17,7 @@ alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
 manyRuns = 1;
+lesioned = 1;
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
@@ -124,8 +129,11 @@ w_fg = (rand([60 100])*2)-1;
 w_gh = (rand([100 60])*2)-1;
 
 %--------Randomly Generate the weights for SoN---------
-w_co = rand(2,100) * 0.1;
-
+if (lesioned == 0)    
+    w_co = rand(2,100) * 0.1;
+elseif (lesioned == 1)
+    w_co = rand(2,80) * 0.1;
+end
 %--------Run the whole matrix through the epochs--------
 epochs = 0;
 
@@ -223,7 +231,13 @@ while (epochs < maxEpochs)
         
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
-        comparisonMatrix = inputPattern - output_activation;
+        
+        if (lesioned == 0)
+            comparisonMatrix = inputPattern - output_activation;
+        elseif (lesioned == 1)
+            comparisonMatrix = inputPattern(21:100,:) - output_activation(21:100,:);
+        end
+        
         sum_1 = mean(abs(comparisonMatrix));
         
         % Run it through the SoN
@@ -343,8 +357,11 @@ while (epochs < maxEpochs)
     %Store into the performance for Runs
     runsPerformanceStoreSoN(:,runs) = epochPerformanceStoreSoN;
     
-    compMatrix = RandBothInputStore - output_activation_outer;
-    % f weight is 1, h weight is -1
+    if (lesioned == 0)
+        compMatrix = RandBothInputStore - output_activation_outer;
+    elseif (lesioned == 1)
+        compMatrix = RandBothInputStore(21:100,:) - output_activation_outer(21:100,:);
+    end
     
     %[Notes]
     %compMatrix is 100 x 200
@@ -534,12 +551,16 @@ for i = 1:200
         %ames jump here
         
 
-       output_activation_store(100,200) = 1;
-
-        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+       %output_activation_store(100,200) = 1;
+        if (lesioned == 0)
+            compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+        elseif (lesioned == 1)
+            compMatrix = RandBothInputStore(21:100,i) - output_activation_outer(21:100,i);
+        end
+        
             
         %Run the vector through the association matrix
-        %{
+        
         inputPattern_2 = compMatrix;
         if (sigmoidForComparatorMatrix == 1)
             if (alternativeSigmoidSoN == 0)
@@ -557,7 +578,7 @@ for i = 1:200
         end
         
         %test_1 = output_activation_2;
-        %}
+        
          %----------------WTA Implementation for SoN-----------------
         %first type of WTA network
         %inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,max_strength);
@@ -565,10 +586,6 @@ for i = 1:200
 
         %output_activation_2_wta = son_Output(:,i);
         output_activation_2_wta = output_activation_2;
-
-
-        output_activation_2_wta = son_Output(:,i);
-        %output_activation_2_wta = output_activation_2;
 
         %Comparison to make a decision
         if (output_activation_2_wta(1,1) < output_activation_2_wta(2,1))
