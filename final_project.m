@@ -13,7 +13,7 @@ alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
-manyRuns = 1;
+manyRuns = 0;
 
 
 %simple counter to store all errors
@@ -53,7 +53,7 @@ runs = runs + 1;
 
 %--------Randomly Generate the input for Pre-Training---------
 
-%----------------------------------Testing Stimuli Begin
+%----------------------------------Testing Stimuli Begin-------------------
 StimulusInputStore_t = rand(100)/50;
 StimulusTargetStore_t = zeros(100,100);
 NoiseTargetStore_t = zeros(100,100);
@@ -92,7 +92,7 @@ for i = 1:200
    end
    
 end
-%----------------------------------Testing Stimuli end
+%----------------------------------Testing Stimuli end---------------------
 son_Output = nan(2,200);
 fon_Correct = nan(2,200);
 
@@ -168,11 +168,11 @@ end
 % RandBothInputStore(:,200) = rand(100,1)/50;
 
 %--------Randomly Generate the weights for FoN---------
-w_fg = (rand([60 100])* 2) - 1;
-w_gh = (rand([100 60])* 2) - 1;
+w_fg = (rand(60, 100)* 2) - 1;
+w_gh = (rand(100, 60)* 2) - 1;
 
 %--------Randomly Generate the weights for SoN---------
-w_co = (rand(2,100) * 0.001);
+w_co = (rand(2,100) * 0.1);
 
 %--------Run the whole matrix through the epochs--------
 epochs = 0;
@@ -217,7 +217,7 @@ while (epochs < maxEpochs)
             output_activation = activation_fn_2(input_to_output);
         end
         %Store the output_activation into output_activation_store
-        output_activation_store(:,i) = output_activation;
+        % output_activation_store(:,i) = output_activation;
 
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
@@ -274,8 +274,6 @@ while (epochs < maxEpochs)
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
 
-       % sum_1 = mean(abs(comparisonMatrix));
-
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
         if (sigmoidForComparatorMatrix == 1)
@@ -306,24 +304,22 @@ while (epochs < maxEpochs)
         elseif ((FoNIsCorrect == true && highWager == false)||(FoNIsCorrect == false && highWager == true))
             tempPerformanceStoreSoN(i,1) = 0;
         end
-        
-        
+   
         %Generate the error vector for SoN
         %backpropagate through one set of hidden units
-        %output_error_2 = sum_1 - output_activation_2;
 
         output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
         
-        if (alternativeSigmoidSoN == 0)
-            dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
-        elseif (alternativeSigmoidSoN == 1)
-            dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
-        end
+%         if (alternativeSigmoidSoN == 0)
+%             dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
+%         elseif (alternativeSigmoidSoN == 1)
+%             dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
+%         end
         
         % Change the weights
-       w_co = 0.7 * (w_co + dw_co) + (rand() - 0.5);
+       w_co = w_co + dw_co;%0.6  * (w_co + dw_co) - rand();
        son_Output(:,i) = output_activation_2;
      
     %End of the for loop that runs through all the columns in the matrix
@@ -364,24 +360,20 @@ while (epochs < maxEpochs)
         output_activation_outer = activation_fn_2(input_to_output_outer);
     end
     
-      
-    
     %Calculate the error for the entire matrix for FoN
-    output_error_outer = RandBothTargetStore - output_activation_outer;
-    
-    % Calculate the sum of squares for FoN
-    sse = trace(output_error_outer' * output_error_outer);
-    
-
-    
-    % Store the current sum of squares for FoN in the sum of squares store vector
-    sseStore(epochs,1) = sse;
-    
-    % Every 10 epochs, show what the sum of squares is
-    if mod(epochs,10) == 0
-       %disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
-       %ames commented this out because it was making output too long
-    end
+%     output_error_outer = RandBothTargetStore - output_activation_outer;
+%     
+%     % Calculate the sum of squares for FoN
+%     sse = trace(output_error_outer' * output_error_outer);
+%  
+%     % Store the current sum of squares for FoN in the sum of squares store vector
+%     sseStore(epochs,1) = sse;
+%     
+%     % Every 10 epochs, show what the sum of squares is
+%     if mod(epochs,10) == 0
+%        %disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
+%        %ames commented this out because it was making output too long
+%     end
     
     %----------------------------------------
     % ---------------Outer SoN---------------
@@ -417,21 +409,20 @@ while (epochs < maxEpochs)
         output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
     end
     
-    % Calculate the error for the entire matrix for SoN
-    output_error_outer_2 = targetVectorStore - output_activation_outer_2;
-    
-    % Calculate the sum of squares for SoN
-    sse_2 = trace(output_error_outer_2' * output_error_outer_2);
-    
-    % Store the current sum of squares for SoN in the sum of squares store vector
-    sseStore_2(epochs,1) = sse_2;
-    
+%     % Calculate the error for the entire matrix for SoN
+%     output_error_outer_2 = targetVectorStore - output_activation_outer_2;
+%     
+%     % Calculate the sum of squares for SoN
+%     sse_2 = trace(output_error_outer_2' * output_error_outer_2);
+%     
+%     % Store the current sum of squares for SoN in the sum of squares store vector
+%     sseStore_2(epochs,1) = sse_2;
+%     
     % End of the while loop for the epochs   
    
 end
 
 %--------------------------END OF ALL TRAINING-----------------------------
-
 
 %-----------Plot the sse--------------
 % Plot sse for FoN
@@ -468,7 +459,6 @@ hitsCountFoN= 0;
 faCountFoN = 0;
 missCountFoN = 0;
 crCountFoN = 0;
-
 
 hitsCountSoN= 0;
 faCountSoN = 0;
@@ -536,7 +526,7 @@ for i = 1:200
         stimulusPresent = false;
         
         for j = 1:100
-            if (output_activation_store(j,i) > 0.5)
+            if (output_activation(j) > 0.5)
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
@@ -577,11 +567,8 @@ for i = 1:200
         
         %--------Decision of SON--------
         %
-        
-
-       output_activation_store(100,200) = 1;
-
-        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+       %output_activation_store(100,200) = 1;
+        compMatrix = RandBothInputStore(:,i) - output_activation;
       % False Alarm test
 %         if (i == 200)
 %            compMatrix(100) = -1;
@@ -593,7 +580,7 @@ for i = 1:200
      %      compMatrix(100) = -1;
       % end
         %Run the vector through the association matrix
-        %{
+        
         inputPattern_2 = compMatrix;
         if (sigmoidForComparatorMatrix == 1)
             if (alternativeSigmoidSoN == 0)
@@ -611,7 +598,7 @@ for i = 1:200
         end
         
         %test_1 = output_activation_2;
-        %}
+        
          %----------------WTA Implementation for SoN-----------------
         %first type of WTA network
         %inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,max_strength);
@@ -745,4 +732,3 @@ title('Performance in Recognition and Wagering');
        ylabel('Performance');
        xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
        legend('First Order Network', 'Second Order Network');
-
