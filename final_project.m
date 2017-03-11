@@ -2,23 +2,20 @@
 learningRate = 0.9;
 secondLearningRate = 0.1;
 maxEpochs = 150;
+rng('shuffle');
+
 %*****SWITCHES*****
 subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
+sigmoidForComparatorMatrix = 0;
+
+
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 %secondNetUnit = 0;
 wtaCorrected = zeros(100,200);
-
-
-%Array of correct second order network 
-%ames
-    son_correct = zeros(maxEpochs);
-    vector_correct = zeros(200,1);
-%
-
 
 %----------Winner Take All Parameters (first type of network)-------
 %not changing
@@ -35,6 +32,46 @@ max_strength = 5;
 
 %--------Randomly Generate the input for Pre-Training---------
 
+%----------------------------------Testing Stimuli Begin
+StimulusInputStore_t = rand(100)/50;
+StimulusTargetStore_t = zeros(100,100);
+NoiseTargetStore_t = zeros(100,100);
+NoiseInputStore_t = rand(100)/50; %range from 0 to 0.02
+for i = 1:100
+    randStimulus_t = rand;
+    randLocus_t = randi([1,100]);
+    StimulusInputStore_t(randLocus_t,i) = randStimulus_t;
+    StimulusTargetStore_t(randLocus_t,i) = 1;
+end
+
+BothInputStore_t = zeros(100,200);
+BothTargetStore_t = zeros(100,200);
+
+BothInputStore_t(:,1:100) = StimulusInputStore_t;
+BothInputStore_t(:,101:200) = NoiseInputStore_t;
+
+BothTargetStore_t(:,1:100) = StimulusTargetStore_t;
+BothTargetStore_t(:,101:200) = NoiseTargetStore_t;
+
+RandBothInputStore_t = zeros(100,200);
+RandBothTargetStore_t = zeros(100,200);
+
+thePerm_t = randperm(200);
+
+correctTrials_t = zeros(200,1);
+
+targetVectorStore_t = zeros(2,200);
+
+for i = 1:200
+   RandBothInputStore_t(:,i) = BothInputStore_t(:,thePerm_t(i));
+   RandBothTargetStore_t(:,i) = BothTargetStore_t(:,thePerm_t(i));
+   
+   if(any(RandBothTargetStore_t(:,i)>0))
+       correctTrials_t(i,1) = 1;
+   end
+   
+end
+%----------------------------------Testing Stimuli end
 son_Output = nan(2,200);
 fon_Correct = nan(2,200);
 
@@ -90,6 +127,7 @@ correctTrials = zeros(200,1);
 %Create a store for the Target Vectors of SoN
 targetVectorStore = zeros(2,200);
 
+
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
 for i = 1:200
@@ -109,11 +147,11 @@ end
 % RandBothInputStore(:,200) = rand(100,1)/50;
 
 %--------Randomly Generate the weights for FoN---------
-w_fg = (rand([60 100])* 2)-1;
-w_gh = (rand([100 60])*2)-1;
+w_fg = (rand([60 100])* 2) - 1;
+w_gh = (rand([100 60])* 2) - 1;
 
 %--------Randomly Generate the weights for SoN---------
-w_co = rand(2,100) * 0.1;
+w_co = (rand(2,100) * 0.001);
 
 %--------Run the whole matrix through the epochs--------
 epochs = 0;
@@ -125,11 +163,23 @@ sseStore_2 = zeros(maxEpochs,1);
 % Create a store for the output_activations of FoN
 output_activation_store = zeros(100,200);
 
+%Create a store for performance every epoch
+epochPerformanceStoreFoN = zeros(maxEpochs,1);
+epochPerformanceStoreSoN = zeros(maxEpochs,1);
+
+%Create a store for performance for every vector
+tempPerformanceStoreFoN = zeros(200,1);
+tempPerformanceStoreSoN = zeros(200,1);
+
+%--------------------------START OF ALL TRAINING-----------------------------
+
 while (epochs < maxEpochs)
     %Pre-Training of Data
     for i = 1:200
         
-        %----------------FoN---------------
+        %----------------------------------------------------
+        %----------------FoN within 1:200 loop---------------
+        %----------------------------------------------------
 
         %Run the vector through the assocation matrix one at a time
         if (alternativeSigmoidFoN == 0)
@@ -174,9 +224,11 @@ while (epochs < maxEpochs)
         
         % Determine if the FoN is making a correct judgment
         if ((stimulusPresent == true && correctTrials(i,1) == 1) || (stimulusPresent == false && correctTrials(i,1) == 0))
-           FoNIsCorrect = true; 
+           FoNIsCorrect = true;
+           tempPerformanceStoreFoN(i,1) = 1;
         elseif  ((stimulusPresent == true && correctTrials(i,1) == 0) || (stimulusPresent == false && correctTrials(i,1) == 1))
            FoNIsCorrect = false;
+           tempPerformanceStoreFoN(i,1) = 0;
         else
             disp(string('Error in determining if FONIsCorrect.'));
         end
@@ -192,35 +244,53 @@ while (epochs < maxEpochs)
         else
             disp(string('Error in generating targetVector in top 1:200 loop.'));
         end
-        %----------------------------------------
-        %----------------SoN---------------
+        
+        %----------------------------------------------------
+        %----------------SoN within 1:200 loop---------------
+        %----------------------------------------------------
+        
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         comparisonMatrix = inputPattern - output_activation;
+
        % sum_1 = mean(abs(comparisonMatrix));
+
         % Run it through the SoN
         inputPattern_2 = comparisonMatrix;
-        input_to_output_2 = w_co * inputPattern_2;
+        if (sigmoidForComparatorMatrix == 1)
+            if (alternativeSigmoidSoN == 0)
+                inputPattern_2 = activation_fn(inputPattern_2);
+            elseif (alternativeSigmoidSoN == 1)
+                inputPattern_2 = activation_fn_2(inputPattern_2);
+            end
+        end
+        
+        input_to_output_2 = (w_co * inputPattern_2);
         if (alternativeSigmoidSoN == 0)
             output_activation_2 = activation_fn(input_to_output_2);
         elseif (alternativeSigmoidSoN == 1)
             output_activation_2 = activation_fn_2(input_to_output_2);
         end
         
-        if (output_activation_2(1,1) > output_activation(2,1))
-            wager = 1;
-        else
-            wager = 0;
-        end
-        %ames
-        if ((FoNIsCorrect == true && wager == 1)||(FoNIsCorrect == false && wager == 0))
-            vector_correct(i) = 1;
-        else
-            vector_correct(i) = 0;
+        %Determine SoN decision
+        if (output_activation_2(1,1) < output_activation_2(2,1))
+            highWager = false;
+        elseif (output_activation_2(1,1) > output_activation_2(2,1))
+            highWager = true;
         end
         
-        % Generate the error vector for SoN
+        %Determine is SoN is correct
+        if((FoNIsCorrect == true && highWager == true)||(FoNIsCorrect == false && highWager == false))
+            tempPerformanceStoreSoN(i,1) = 1;
+        elseif ((FoNIsCorrect == true && highWager == false)||(FoNIsCorrect == false && highWager == true))
+            tempPerformanceStoreSoN(i,1) = 0;
+        end
+        
+        
+        %Generate the error vector for SoN
         %backpropagate through one set of hidden units
+        %output_error_2 = sum_1 - output_activation_2;
+
         output_error_2 = targetVector - output_activation_2;
         
         % Calculate the desired change in weights for w_co
@@ -232,13 +302,26 @@ while (epochs < maxEpochs)
         end
         
         % Change the weights
-       w_co = w_co + dw_co;
+       w_co = 0.7 * (w_co + dw_co) + (rand() - 0.5);
        son_Output(:,i) = output_activation_2;
      
     %End of the for loop that runs through all the columns in the matrix
     end
+    %*******************************************************************
+    %********************START OF OUTER LOOP****************************
+    %*******************************************************************
     
-    % ---------Outer FoN---------
+    % Increment the epochs to keep track of the current epoch and to see if
+    %the maximum epoch has been reached
+    epochs = epochs + 1;
+    
+    %----------------------------------------
+    % ---------------Outer FoN---------------
+    %----------------------------------------
+    
+    %Store the FoN proportion correct in this epoch into the performance
+    %store
+    epochPerformanceStoreFoN(epochs,1) = mean(tempPerformanceStoreFoN);
     
     % Run the entire pattern through the associator to obtain the errors all
     % at once, without changing the weights. This is to see the progress of
@@ -257,16 +340,15 @@ while (epochs < maxEpochs)
         output_activation_outer = activation_fn_2(input_to_output_outer);
     end
     
-    %[Wrong here]
+      
+    
     %Calculate the error for the entire matrix for FoN
     output_error_outer = RandBothTargetStore - output_activation_outer;
     
     % Calculate the sum of squares for FoN
     sse = trace(output_error_outer' * output_error_outer);
     
-    % Increment the epochs to keep track of the current epoch and to see if
-    %the maximum epoch has been reached
-    epochs = epochs + 1;
+
     
     % Store the current sum of squares for FoN in the sum of squares store vector
     sseStore(epochs,1) = sse;
@@ -277,7 +359,13 @@ while (epochs < maxEpochs)
        %ames commented this out because it was making output too long
     end
     
-    %----------------- Outer SoN -----------------
+    %----------------------------------------
+    % ---------------Outer SoN---------------
+    %----------------------------------------  
+    
+    %Store the FoN proportion correct in this epoch into the performance
+    %store
+    epochPerformanceStoreSoN(epochs,1) = mean(tempPerformanceStoreSoN);
     
     compMatrix = RandBothInputStore - output_activation_outer;
     % f weight is 1, h weight is -1
@@ -288,6 +376,13 @@ while (epochs < maxEpochs)
     
     % Run the entire thing through the SoN to test, like FoN above
     inputPatternOuter_2 = compMatrix;
+    if (sigmoidForComparatorMatrix == 1)
+        if (alternativeSigmoidSoN == 0)
+            inputPatternOuter_2 = activation_fn(inputPatternOuter_2);
+        elseif (alternativeSigmoidSoN == 1)
+            inputPatternOuter_2 = activation_fn_2(inputPatternOuter_2);
+        end
+    end
     input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
     if (alternativeSigmoidSoN == 0)
         output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
@@ -305,22 +400,23 @@ while (epochs < maxEpochs)
     sseStore_2(epochs,1) = sse_2;
     
     % End of the while loop for the epochs   
-    son_correct(epochs) = mean(vector_correct);
-    vector_correct = zeros(200,1);
+   
 end
+
+%--------------------------END OF ALL TRAINING-----------------------------
 
 
 %-----------Plot the sse--------------
 % Plot sse for FoN
 
 %Plot the sse
-
-%  figure(1);
-%        plot(sseStore(1:epochs,1));
-%        title('FoN ssError Plot');
-%        xlabel('epoch');
-%        ylabel('sse');
-       
+%{
+ figure(1);
+       plot(sseStore(1:epochs,1));
+       title('FoN ssError Plot');
+       xlabel('epoch');
+       ylabel('sse');
+   %}    
  % Plot sse for SoN      
  %{
 figure(2);
@@ -341,10 +437,16 @@ highWagerCount = 0;
 lowWagerCount = 0;
 
 % Create counters for SDT
-hitsCount = 0;
-faCount = 0;
-missCount = 0;
-crCount = 0;
+hitsCountFoN= 0;
+faCountFoN = 0;
+missCountFoN = 0;
+crCountFoN = 0;
+
+
+hitsCountSoN= 0;
+faCountSoN = 0;
+missCountSoN = 0;
+crCountSoN = 0;
 
 %------Set up Subthreshold stimuli for testing--------
 
@@ -377,7 +479,12 @@ if (subthresholdTest == true)
 end
 %[Comment/Uncomment for supra/subthreshold stimuli ends]
 
-%--------Loop for Testing--------
+%--------	TESTING THE NETWORK --------
+
+
+%Changeinput to test network=======================================
+
+%RandBothInputStore(100,200) = -1;
 
 for i = 1:200
     
@@ -420,18 +527,33 @@ for i = 1:200
         % Determine the correct answer and set the boolean value to reflect
         % accuracy
         
-        if((correctTrials(i,1) == 1 && stimulusPresent == true) || (correctTrials(i,1) == 0 && stimulusPresent == false))
+        if(correctTrials(i,1) == 1 && stimulusPresent == true)
             correctAssess = correctAssess + 1;
             disp(string('   ++ This FON assessment is correct.'));
             FoNIsCorrect = true;
-        else
-            disp(string('   -- This FON assessment is incorrect.'));
+            hitsCountFoN = hitsCountFoN + 1;
+        elseif (correctTrials(i,1) == 0 && stimulusPresent == false)
+            correctAssess = correctAssess + 1;
+            disp(string('   ++ This assessment is correct.'));
+            FoNIsCorrect = true;
+            crCountFoN = crCountFoN + 1;
+        elseif (correctTrials(i,1) == 1 && stimulusPresent == false)
+            disp(string('   -- This assessment is incorrect.'));
+
             FoNIsCorrect = false;
+            missCountFoN = missCountFoN + 1;
+        elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
+            disp(string('   -- This assessment is incorrect.'));
+            FoNIsCorrect = false;
+            faCountFoN = faCountFoN + 1;
         end
         
         %--------Decision of SON--------
         %
         
+
+       output_activation_store(100,200) = 1;
+
         compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
       % False Alarm test
 %         if (i == 200)
@@ -446,6 +568,13 @@ for i = 1:200
         %Run the vector through the association matrix
         %{
         inputPattern_2 = compMatrix;
+        if (sigmoidForComparatorMatrix == 1)
+            if (alternativeSigmoidSoN == 0)
+                inputPattern_2 = activation_fn(inputPattern_2);
+            elseif (alternativeSigmoidSoN == 1)
+                inputPattern_2 = activation_fn_2(inputPattern_2);
+            end
+        end
         input_to_hidden_2 = w_co * inputPattern_2;
         
         if (alternativeSigmoidSoN == 0)
@@ -460,8 +589,10 @@ for i = 1:200
         %first type of WTA network
         %inhibit_weights_son = makeInhibitoryWeights(2,1,epsilon,max_strength);
         %output_activation_2_wta = compute_inhibited_vect(inhibit_weights_son,output_activation_2,output_activation_2, 2, wta_itr, epsilon);  
-        output_activation_2_wta = son_Output(:,i);
-        %output_activation_2_wta = output_activation_2;
+
+        %output_activation_2_wta = son_Output(:,i);
+        output_activation_2_wta = output_activation_2;
+
         %Comparison to make a decision
         if (output_activation_2_wta(1,1) < output_activation_2_wta(2,1))
             %disp(string('      The SoN decision is Low wager.'));
@@ -487,24 +618,38 @@ for i = 1:200
         
         if (highWager == true &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is correct!!! '));
-            correctAssess_2 = correctAssess_2 + 1;
-            hitsCount = hitsCount + 1;
-           
+            correctAssess_2 = correctAssess_2 + 1;   
+            hitsCountSoN = hitsCountSoN + 1;
         elseif (highWager == false &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is correct!!! '));
-            correctAssess_2 = correctAssess_2 + 1; 
-        
-            crCount = crCount + 1;
+            correctAssess_2 = correctAssess_2 + 1;   
+            crCountSoN = crCountSoN + 1;
+
         elseif (highWager == true &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is incorrect.... '));
-            faCount = faCount + 1;
+            faCountSoN = faCountSoN + 1;
         elseif (highWager == false &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is incorrect.... '));
-            missCount = missCount + 1;
+            missCountSoN = missCountSoN + 1;
         end
              
 end
+%----------------------END OF TESTING------------------------------------
 
+
+
+%Plot the performance per epoch
+plot(epochPerformanceStoreFoN);
+hold;
+plot(epochPerformanceStoreSoN);
+ylim([0 1]);
+title('Performance in Recognition and Wagering');
+       xlabel('epoch');
+       ylabel('Performance');
+       xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
+
+ 
+ 
 %Display if subthreshold test or suprathreshold test
 disp(' ');
 if subthresholdTest == true
@@ -525,7 +670,14 @@ if (alternativeSigmoidSoN == 0)
 elseif (alternativeSigmoidSoN == 1)
     disp(string('SoN: Alternative sigmoid function.')); 
 end
+disp(' ');
 
+%Display SDT numbers for FoN
+disp(string('FoN:'));
+disp(string('Hits Count: ') + hitsCountFoN/2);
+disp(string('False Alarms Count: ') + faCountFoN/2);
+disp(string('Correct Rejection Count: ') + crCountFoN/2);
+disp(string('Miss Count: ') + missCountFoN/2);
 disp(' ');
 
 %Display total correct assessments
@@ -534,15 +686,17 @@ disp(correctAssess/2);
 disp('Correct assessment for SoN');
 disp(correctAssess_2/2);
 
+
 %Display wager count
 disp(string('High Wager Count: ') + highWagerCount/2);
 disp(string('Low Wager Count: ') + lowWagerCount/2);
 disp(' ');
 
-%Display SDT numbers
-disp(string('Hits Count: ') + hitsCount/2);
-disp(string('False Alarms Count: ') + faCount/2);
-disp(string('Correct Rejection Count: ') + crCount/2);
-disp(string('Miss Count: ') + missCount/2);
+%Display SDT numbers for SoN
+disp(string('SoN:'));
+disp(string('Hits Count: ') + hitsCountSoN/2);
+disp(string('False Alarms Count: ') + faCountSoN/2);
+disp(string('Correct Rejection Count: ') + crCountSoN/2);
+disp(string('Miss Count: ') + missCountSoN/2);
 
-plot(son_correct);
+
