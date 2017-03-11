@@ -12,7 +12,7 @@ subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
-manyRuns = 1;
+manyRuns = 0;
 
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
@@ -45,6 +45,18 @@ end
 %Huge matrix to store all the FoN and SoN accuracy rates across the runs
 runsPerformanceStoreFoN = zeros(maxEpochs,maxRuns);
 runsPerformanceStoreSoN = zeros(maxEpochs,maxRuns);
+
+runsHitsCountStoreFoN = zeros(maxRuns,1);
+runsFACountStoreFoN = zeros(maxRuns,1);
+runsCRCountStoreFoN = zeros(maxRuns,1);
+runsMissCountStoreFoN = zeros(maxRuns,1);
+
+runsHitsCountStoreSoN = zeros(maxRuns,1);
+runsFACountStoreSoN = zeros(maxRuns,1);
+runsCRCountStoreSoN = zeros(maxRuns,1);
+runsMissCountStoreSoN = zeros(maxRuns,1);
+
+
 
 while (runs < maxRuns)
 runs = runs + 1;
@@ -133,8 +145,11 @@ epochs = 0;
 sseStore = zeros(maxEpochs,1);
 sseStore_2 = zeros(maxEpochs,1);
 
-% Create a store for the output_activations of FoN
-output_activation_store = zeros(100,200);
+% Create a store for the output_activations of FoN in training loop
+output_activation_store_FoN = zeros(100,200);
+
+% Create a store for the output_activations of FoN in testing loop
+output_activation_store_testing_FoN = zeros(100,200);
 
 %Create a store for performance every epoch
 epochPerformanceStoreFoN = zeros(maxEpochs,1);
@@ -169,7 +184,7 @@ while (epochs < maxEpochs)
             output_activation = activation_fn_2(input_to_output);
         end
         %Store the output_activation into output_activation_store
-        output_activation_store(:,i) = output_activation;
+        output_activation_store_FoN(:,i) = output_activation;
 
         %Calculate the output error
         output_error = RandBothTargetStore(:,i) - output_activation;
@@ -432,8 +447,6 @@ crCountSoN = 0;
 
 %------Set up Subthreshold stimuli for testing--------
 
-%[Comment chunk below for suprathreshold stimuli, uncomment for
-%subthreshold stimuli]
 if (subthresholdTest == true)
     disp(string('Testing Subthreshold Stimuli'));
     randStimulusLoci = zeros(1,200);
@@ -459,14 +472,19 @@ if (subthresholdTest == true)
        end
     end
 end
-%[Comment/Uncomment for supra/subthreshold stimuli ends]
 
-%--------Loop for Testing--------
+%**********************************************************************
+%***********************LOOP FOR TESTING*******************************
+%**********************************************************************
 
 %Changeinput to test network=======================================
 
 %RandBothInputStore(100,200) = -1;
 
+%Declare vector to store index of misses
+missIndexVectorFoN = [];
+crIndexVectorSoN = [];
+faIndexVectorSoN = [];
 
 
 for i = 1:200
@@ -487,12 +505,16 @@ for i = 1:200
             input_to_output = w_gh * hidden_activation;
             output_activation = activation_fn_2(input_to_output);
         end
+        
+        %Store in a 100x200 matrix
+        output_activation_store_testing_FoN(:,i) = output_activation;
+        
         %Set Boolean switch to noise by default until it encounters a value
         %that is above threshold
         stimulusPresent = false;
         
         for j = 1:100
-            if (output_activation_store(j,i) > 0.5)
+            if (output_activation_store_FoN(j,i) > 0.5)
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
@@ -524,19 +546,20 @@ for i = 1:200
             disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
             missCountFoN = missCountFoN + 1;
+            missIndexVectorFoN = cat(2,missIndexVectorFoN,i);
         elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
             disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
-            faCountFoN = faCountFoN + 1;
+            faCountSoN = faCountFoN + 1;            
         end
         
         %--------Decision of SON--------
         %ames jump here
         
 
-       output_activation_store(100,200) = 1;
+       %output_activation_store(100,200) = 1;
 
-        compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
+        compMatrix = RandBothInputStore(:,i) - output_activation_store_FoN(:,i);
             
         %Run the vector through the association matrix
         %{
@@ -602,9 +625,11 @@ for i = 1:200
             disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             crCountSoN = crCountSoN + 1;
+            crIndexVectorSoN = cat(2,crIndexVectorSoN,i);
         elseif (highWager == true &&  FoNIsCorrect == false)
             disp(string('         The SoN assessment is incorrect.... '));
             faCountSoN = faCountSoN + 1;
+            faIndexVectorSoN = cat(2,faIndexVectorSoN,i);
         elseif (highWager == false &&  FoNIsCorrect == true)
             disp(string('         The SoN assessment is incorrect.... '));
             missCountSoN = missCountSoN + 1;
@@ -612,6 +637,7 @@ for i = 1:200
              
 end
 %----------------------END OF TESTING------------------------------------
+
 
 
 %{
@@ -627,7 +653,9 @@ title('Performance in Recognition and Wagering');
        legend('First Order Network', 'Second Order Network');
 
  %}
- 
+%Display runs
+disp(string('runs: ') + runs);
+
 %Display if subthreshold test or suprathreshold test
 disp(' ');
 if subthresholdTest == true
@@ -650,6 +678,15 @@ elseif (alternativeSigmoidSoN == 1)
 end
 disp(' ');
 
+
+
+%Display total correct assessments
+disp('Correct assessment for FoN');
+disp(correctAssess/2);
+disp('Correct assessment for SoN');
+disp(correctAssess_2/2);
+
+
 %Display SDT numbers for FoN
 disp(string('FoN:'));
 disp(string('Hits Count: ') + hitsCountFoN/2);
@@ -657,12 +694,6 @@ disp(string('False Alarms Count: ') + faCountFoN/2);
 disp(string('Correct Rejection Count: ') + crCountFoN/2);
 disp(string('Miss Count: ') + missCountFoN/2);
 disp(' ');
-
-%Display total correct assessments
-disp('Correct assessment for FoN');
-disp(correctAssess/2);
-disp('Correct assessment for SoN');
-disp(correctAssess_2/2);
 
 
 %Display wager count
@@ -676,10 +707,42 @@ disp(string('Hits Count: ') + hitsCountSoN/2);
 disp(string('False Alarms Count: ') + faCountSoN/2);
 disp(string('Correct Rejection Count: ') + crCountSoN/2);
 disp(string('Miss Count: ') + missCountSoN/2);
+disp(' ');
+
+%Store SDT results in the runsStore
+runsHitsCountStoreFoN(runs,1) = hitsCountFoN/2;
+runsFACountStoreFoN(runs,1) = faCountFoN/2;
+runsCRCountStoreFoN(runs,1) = crCountFoN/2;
+runsMissCountStoreFoN(runs,1) = missCountFoN/2;
+
+runsHitsCountStoreSoN(runs,1) = hitsCountSoN/2;
+runsFACountStoreSoN(runs,1) = faCountSoN/2;
+runsCRCountStoreSoN(runs,1) = crCountSoN/2;
+runsMissCountStoreSoN(runs,1) = missCountSoN/2;
 
 end
 %^^^ This end here belongs to the massive while loop all the way at the top
 %(for number of runs, line 45 or so.)
+
+disp('------------------------------------------');
+disp(' ');
+
+%Display count after 15 runs
+%Display SDT numbers for FoN
+disp(string('average FoN:'));
+disp(string('Hits Count: ') + mean(runsHitsCountStoreFoN));
+disp(string('False Alarms Count: ') + mean(runsFACountStoreFoN));
+disp(string('Correct Rejection Count: ') + mean(runsCRCountStoreFoN));
+disp(string('Miss Count: ') + mean(runsMissCountStoreFoN));
+disp(' ');
+
+%Display SDT numbers for FoN
+disp(string('average SoN:'));
+disp(string('Hits Count: ') + mean(runsHitsCountStoreSoN));
+disp(string('False Alarms Count: ') + mean(runsFACountStoreSoN));
+disp(string('Correct Rejection Count: ') + mean(runsCRCountStoreSoN));
+disp(string('Miss Count: ') + mean(runsMissCountStoreSoN));
+disp(' ');
 
 %average out the performances for each epoch
 averagePerformanceFoN = mean(runsPerformanceStoreFoN,2);
