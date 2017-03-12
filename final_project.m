@@ -6,9 +6,13 @@
 rng('shuffle');
 
 %--------Set parameters---------
-learningRate = 0.9;
+learningRate = 0.1;
 secondLearningRate = 0.1;
 maxEpochs = 150;
+
+%------Set noise levels-----
+inputNoiseLevel = 0.02;
+subcorticalNoiseLevel = 0.02;
 
 
 %*****SWITCHES*****
@@ -16,8 +20,9 @@ subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
-manyRuns = 1;
-lesioned = 1;
+manyRuns = 0;
+compMatrixLesioned = 0;
+V1Lesioned = 1;
 
 
 %simple counter to store all errors
@@ -73,29 +78,62 @@ son_Output = nan(2,200);
 fon_Correct = nan(2,200);
 
 %Create 100x100 random numbers from 0.00 to 0.02
-StimulusInputStore = rand(100)/50;
+StimulusInputStore = rand(100)*inputNoiseLevel;
 StimulusTargetStore = zeros(100,100);
-
-NoiseInputStore = rand(100)/50; %range from 0 to 0.02
+    
+NoiseInputStore = rand(100)*inputNoiseLevel; %range from 0 to 0.02
 NoiseTargetStore = zeros(100,100);
 
 %Create a vector to store the loci of the stimulus
 stimulusLoci = zeros(100,1);
 
+
 %Insert a random [0.00 to 1.00] into one of each vector (column), and
-%insert a 1 into the corresponding location in the vector
-%each f vector is a column
+%insert a 1 into the corresponding location in the vector.
+%Each f vector is a column
 for i = 1:100
     %Generate the value of the stimulus
     randStimulus = rand;
-    %Generate the locus of the stimulus within the vector
-    randLocus = randi([1,100]);
+    
+    if (V1Lesioned == 0)
+        %Generate the locus of the stimulus within the vector
+        randLocus = randi([1,100]);         
+    elseif (V1Lesioned == 1)
+        %Generate the locus of the stimulus within the first half of vector
+        randLocus = randi([1,50]);
+        %Store the Locus of the stimulus
+    end
+    %Store the Locus of the stimulus
+    stimulusLoci(i,1) = randLocus;
+    
     %Insert the stimulus into the input vector
     StimulusInputStore(randLocus,i) = randStimulus;
     %Insert the stimulus into the target vector
     StimulusTargetStore(randLocus,i) = 1;
 end
 
+if (V1Lesioned == 1)
+    %Copy first half of stimulus input vector into second half
+    StimulusInputStore(51:100,:) = StimulusInputStore(1:50,:);
+    %Copy first half of stimulus target vector into second half
+    StimulusTargetStore(51:100,:) = StimulusTargetStore(1:50,:);
+    
+    %Copy first half of noise input vector into second half
+    NoiseInputStore(51:100,:) = NoiseInputStore(1:50,:);
+    
+    %Make the noise for second half of vector
+    subcorticalNoise_Stimulus = rand(50,100)*subcorticalNoiseLevel;
+    subcorticalNoise_Noise = rand(50,100)*subcorticalNoiseLevel;
+    
+    %Make the subcortical noise for the stimulus equal to zero
+    for i = 1:100
+       subcorticalNoise_Stimulus(stimulusLoci(i,1),i) = 0; 
+    end
+    
+    %Add noise to second half of stimulus and noise inputs
+    StimulusInputStore(51:100,:) = StimulusInputStore(51:100,:) + subcorticalNoise_Stimulus;
+    NoiseInputStore(51:100,:) = NoiseInputStore(51:100,:) + subcorticalNoise_Noise;
+end
 
 %Shuffle and mix the stimulus and noise into one large 100 x 200 input matrix
 %Preallocate memory
@@ -124,7 +162,6 @@ correctTrials = zeros(200,1);
 %Create a store for the Target Vectors of SoN
 targetVectorStore = zeros(2,200);
 
-
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
 for i = 1:200
@@ -142,9 +179,9 @@ w_fg = (rand([60 100])*2)-1;
 w_gh = (rand([100 60])*2)-1;
 
 %--------Randomly Generate the weights for SoN---------
-if (lesioned == 0)    
+if (compMatrixLesioned == 0)    
     w_co = rand(2,100) * 0.1;
-elseif (lesioned == 1)
+elseif (compMatrixLesioned == 1)
     w_co = rand(2,80) * 0.1;
 end
 %--------Run the whole matrix through the epochs--------
@@ -248,9 +285,9 @@ while (epochs < maxEpochs)
         % Generate Comparison vector
         %comparator matrix is initial matrix * 1 weight + result matrix * -1
         
-        if (lesioned == 0)
+        if (compMatrixLesioned == 0)
             comparisonMatrix = inputPattern - output_activation;
-        elseif (lesioned == 1)
+        elseif (compMatrixLesioned == 1)
             comparisonMatrix = inputPattern(21:100,:) - output_activation(21:100,:);
         end
         
@@ -373,9 +410,9 @@ while (epochs < maxEpochs)
     %Store into the performance for Runs
     runsPerformanceStoreSoN(:,runs) = epochPerformanceStoreSoN;
     
-    if (lesioned == 0)
+    if (compMatrixLesioned == 0)
         compMatrix = RandBothInputStore - output_activation_outer;
-    elseif (lesioned == 1)
+    elseif (compMatrixLesioned == 1)
         compMatrix = RandBothInputStore(21:100,:) - output_activation_outer(21:100,:);
     end
     
@@ -491,6 +528,13 @@ if (subthresholdTest == true)
     end
 end
 
+if (V1Lesioned == 1)
+    %Lesion the first half of the input stimulus
+    V1Lesion = zeros(50,200);
+    RandBothInputStore(1:50,:) = V1Lesion;
+end
+
+
 %**********************************************************************
 %***********************LOOP FOR TESTING*******************************
 %**********************************************************************
@@ -577,10 +621,10 @@ for i = 1:200
 
        %output_activation_store(100,200) = 1;
 
-        if (lesioned == 0)
-            compMatrix = RandBothInputStore(:,i) - output_activation_store(:,i);
-        elseif (lesioned == 1)
-            compMatrix = RandBothInputStore(21:100,i) - output_activation_outer(21:100,i);
+        if (compMatrixLesioned == 0)
+            compMatrix = RandBothInputStore(:,i) - output_activation_store_testing_FoN(:,i);
+        elseif (compMatrixLesioned == 1)
+            compMatrix = RandBothInputStore(21:100,i) - output_activation_outer_testing_FoN(21:100,i);
         end
             
         %Run the vector through the association matrix
