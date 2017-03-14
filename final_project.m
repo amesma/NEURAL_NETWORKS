@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%
+fi%%%%%%%%%%%%%%%%%%%%%%
 %  LESIONED NETWORK  %
 %%%%%%%%%%%%%%%%%%%%%%
 
@@ -6,13 +6,15 @@
 rng('shuffle');
 
 %--------Set parameters---------
-learningRate = 0.1;
+learningRate = 0.9;
 secondLearningRate = 0.1;
 maxEpochs = 150;
 
 %------Set noise levels-----
-inputNoiseLevel = 0.02;
+inputNoiseLevel = 0.9;
 subcorticalNoiseLevel = 0.02;
+
+theThreshold = 0.1;
 
 
 %*****SWITCHES*****
@@ -22,7 +24,7 @@ alternativeSigmoidSoN = 0;
 sigmoidForComparatorMatrix = 0;
 manyRuns = 0;
 compMatrixLesioned = 0;
-V1Lesioned = 1;
+V1Lesioned = 0;
 
 
 %simple counter to store all errors
@@ -250,7 +252,7 @@ while (epochs < maxEpochs)
         %Determine judgment at this point to train SoN
         stimulusPresent = false;
         for j = 1:100
-            if (output_activation(j,1) > 0.5)
+            if (output_activation(j,1) > theThreshold)
                stimulusPresent = true; 
             end
         end
@@ -576,7 +578,7 @@ for i = 1:200
         stimulusPresent = false;
         
         for j = 1:100
-            if (output_activation_store_FoN(j,i) > 0.5)
+            if (output_activation_store_FoN(j,i) > theThreshold)
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
@@ -612,7 +614,7 @@ for i = 1:200
         elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
             disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
-            faCountSoN = faCountFoN + 1;            
+            faCountFoN = faCountFoN + 1;            
         end
         
         %--------Decision of SON--------
@@ -624,7 +626,7 @@ for i = 1:200
         if (compMatrixLesioned == 0)
             compMatrix = RandBothInputStore(:,i) - output_activation_store_testing_FoN(:,i);
         elseif (compMatrixLesioned == 1)
-            compMatrix = RandBothInputStore(21:100,i) - output_activation_outer_testing_FoN(21:100,i);
+            compMatrix = RandBothInputStore(21:100,i) - output_activation_store_testing_FoN(21:100,i);
         end
             
         %Run the vector through the association matrix
@@ -771,6 +773,8 @@ disp(string('Correct Rejection Count: ') + crCountSoN/2);
 disp(string('Miss Count: ') + missCountSoN/2);
 disp(' ');
 
+disp(string('run: ') + runs);
+
 %Store SDT results in the runsStore
 runsHitsCountStoreFoN(runs,1) = hitsCountFoN/2;
 runsFACountStoreFoN(runs,1) = faCountFoN/2;
@@ -806,6 +810,7 @@ disp(string('Correct Rejection Count: ') + mean(runsCRCountStoreSoN));
 disp(string('Miss Count: ') + mean(runsMissCountStoreSoN));
 disp(' ');
 
+
 %average out the performances for each epoch
 averagePerformanceFoN = mean(runsPerformanceStoreFoN,2);
 averagePerformanceSoN = mean(runsPerformanceStoreSoN,2);
@@ -820,3 +825,15 @@ title('Performance in Recognition and Wagering');
        ylabel('Performance');
        xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
        legend('First Order Network', 'Second Order Network');
+       
+%Find out where the misses came from
+missFValueVector = [];
+missHValueVector = [];
+for i = 1:size(missIndexVectorFoN,2)
+    for j = 1:100
+       if(RandBothTargetStore(j,missIndexVectorFoN(i)) == 1)
+           missFValueVector = cat(2,missFValueVector,RandBothInputStore(j,missIndexVectorFoN(i)));
+           missHValueVector = cat(2,missHValueVector,output_activation_store_testing_FoN(j,missIndexVectorFoN(i)));
+       end
+    end
+end
