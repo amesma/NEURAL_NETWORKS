@@ -2,20 +2,20 @@
 rng('shuffle');
 
 %--------Set parameters---------
-learningRate = 0.9;
+learningRate = 0.90;
 secondLearningRate = 0.1;
 maxEpochs = 150;
 rng('shuffle');
 
 %*****SWITCHES*****
-subthresholdTest  = 0;
+subthresholdTest  = 1;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
-manyRuns = 0;
-
-
+manyRuns = 1;
+threshold = 0.5;
+noise = 0.5;
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 %secondNetUnit = 0;
@@ -28,18 +28,12 @@ half_dim = 50;
 
 upper_limit = 1;
 lower_limit = 0;
-%experimental
-epsilon = 2.3; %keep
-length_constant = 0.85;
-wta_itr = 10;
-max_strength = 5;
 
-
-%-----Massive Loop for 15 runs-----
+%-----This is part of loop to run the entire network 15 times-----
 runs = 0;
 
 if(manyRuns == 1)
-    maxRuns = 15;
+    maxRuns = 10;
 elseif (manyRuns == 0)
     maxRuns = 1;
 end
@@ -54,92 +48,96 @@ runs = runs + 1;
 %--------Randomly Generate the input for Pre-Training---------
 
 %----------------------------------Testing Stimuli Begin-------------------
-StimulusInputStore_t = rand(100)/50;
-StimulusTargetStore_t = zeros(100,100);
-NoiseTargetStore_t = zeros(100,100);
-NoiseInputStore_t = rand(100)/50; %range from 0 to 0.02
-for i = 1:100
-    randStimulus_t = rand;
-    randLocus_t = randi([1,100]);
-    StimulusInputStore_t(randLocus_t,i) = randStimulus_t;
-    StimulusTargetStore_t(randLocus_t,i) = 1;
-end
-
-BothInputStore_t = zeros(100,200);
-BothTargetStore_t = zeros(100,200);
-
-BothInputStore_t(:,1:100) = StimulusInputStore_t;
-BothInputStore_t(:,101:200) = NoiseInputStore_t;
-
-BothTargetStore_t(:,1:100) = StimulusTargetStore_t;
-BothTargetStore_t(:,101:200) = NoiseTargetStore_t;
-
-RandBothInputStore_t = zeros(100,200);
-RandBothTargetStore_t = zeros(100,200);
-
-thePerm_t = randperm(200);
-
-correctTrials_t = zeros(200,1);
-
-targetVectorStore_t = zeros(2,200);
-
-for i = 1:200
-   RandBothInputStore_t(:,i) = BothInputStore_t(:,thePerm_t(i));
-   RandBothTargetStore_t(:,i) = BothTargetStore_t(:,thePerm_t(i));
-   
-   if(any(RandBothTargetStore_t(:,i)>0))
-       correctTrials_t(i,1) = 1;
-   end
-   
-end
+% StimulusInputStore_t = rand(100)/50;
+% StimulusTargetStore_t = zeros(100,100);
+% NoiseTargetStore_t = zeros(100,100);
+% NoiseInputStore_t = rand(100)/50; %range from 0 to 0.02
+% for i = 1:100
+%     randStimulus_t = rand;
+%     randLocus_t = randi([1,100]);
+%     StimulusInputStore_t(randLocus_t,i) = randStimulus_t;
+%     StimulusTargetStore_t(randLocus_t,i) = 1;
+% end
+% 
+% BothInputStore_t = zeros(100,200);
+% BothTargetStore_t = zeros(100,200);
+% 
+% BothInputStore_t(:,1:100) = StimulusInputStore_t;
+% BothInputStore_t(:,101:200) = NoiseInputStore_t;
+% 
+% BothTargetStore_t(:,1:100) = StimulusTargetStore_t;
+% BothTargetStore_t(:,101:200) = NoiseTargetStore_t;
+% 
+% RandBothInputStore_t = zeros(100,200);
+% RandBothTargetStore_t = zeros(100,200);
+% 
+% thePerm_t = randperm(200);
+% 
+% correctTrials_t = zeros(200,1);
+% 
+% targetVectorStore_t = zeros(2,200);
+% 
+% for i = 1:200
+%    RandBothInputStore_t(:,i) = BothInputStore_t(:,thePerm_t(i));
+%    RandBothTargetStore_t(:,i) = BothTargetStore_t(:,thePerm_t(i));
+%    
+%    if(any(RandBothTargetStore_t(:,i)>0))
+%        correctTrials_t(i,1) = 1;
+%    end
+%    
+% end
 %----------------------------------Testing Stimuli end---------------------
 son_Output = nan(2,200);
 fon_Correct = nan(2,200);
 
-%Create 100x100 random numbers from 0.00 to 0.02
-StimulusInputStore = rand(100)/50;
-StimulusTargetStore = zeros(100,100);
-
-NoiseInputStore = rand(100)/50; %range from 0 to 0.02
-NoiseTargetStore = zeros(100,100);
-
-%Create a vector to store the loci of the stimulus
-stimulusLoci = zeros(100,1);
-
-%Insert a random [0.00 to 1.00] into one of each vector (column), and
-%insert a 1 into the corresponding location in the vector
-%each f vector is a column
-for i = 1:100
-    %Generate the value of the stimulus
-    randStimulus = rand;
-    %Generate the locus of the stimulus within the vector
-    randLocus = randi([1,100]);
-    %Insert the stimulus into the input vector
-    StimulusInputStore(randLocus,i) = randStimulus;
-    %Insert the stimulus into the target vector
-    StimulusTargetStore(randLocus,i) = 1;
-end
-
+% %Create 100x100 random numbers from 0.00 to 0.02
+% StimulusInputStore = rand(100)/50;
+% StimulusTargetStore = zeros(100,100);
+% 
+% NoiseInputStore = rand(100)/50; %range from 0 to 0.02
+% NoiseTargetStore = zeros(100,100);
+% 
+% %Create a vector to store the loci of the stimulus
+% stimulusLoci = zeros(100,1);
+% 
+% %Insert a random [0.00 to 1.00] into one of each vector (column), and
+% %insert a 1 into the corresponding location in the vector
+% %each f vector is a column
+% randLocusStore = zeros(100, 100);
+% for i = 1:100
+%     %Generate the value of the stimulus
+%     randStimulus = 1 - rand();
+%     %Generate the locus of the stimulus within the vector
+%     randLocus = randi([1,100]);
+%     %randLocus is the location where the stimuli is stored
+%     randLocusStore(randLocus, i) = randLocus;
+%     %Insert the stimulus into the input vector
+%     StimulusInputStore(randLocus,i) = randStimulus;
+%     %Insert the stimulus into the target vector
+%     StimulusTargetStore(randLocus,i) = 1;
+% end
+% 
 
 %Shuffle and mix the stimulus and noise into one large 100 x 200 input matrix
 %Preallocate memory
 BothInputStore = zeros(100,200);
 BothTargetStore = zeros(100,200);
 
-%Fill in Inputs from signal and noise
-BothInputStore(:,1:100) = StimulusInputStore;
-BothInputStore(:,101:200) = NoiseInputStore;
-
-%Fill in Targets from signal and noise
-BothTargetStore(:,1:100) = StimulusTargetStore;
-BothTargetStore(:,101:200) = NoiseTargetStore;
-
-%Create new stores for random inputs and targets
-RandBothInputStore = zeros(100,200);
-RandBothTargetStore = zeros(100,200);
-
-%Create a random permutation from 1 to 200
-thePermutation = randperm(200);
+% %Fill in Inputs from signal and noise
+% BothInputStore(:,1:100) = StimulusInputStore;
+% BothInputStore(:,101:200) = NoiseInputStore;
+% 
+% %Fill in Targets from signal and noise
+% BothTargetStore(:,1:100) = StimulusTargetStore;
+% BothTargetStore(:,101:200) = NoiseTargetStore;
+% 
+% %Create new stores for random inputs and targets
+% RandBothInputStore = zeros(100,200);
+ RandBothTargetStore = zeros(100,200);
+ 
+% 
+% %Create a random permutation from 1 to 200
+% thePermutation = randperm(200);
 
 %Create a vector to keep track of which patterns have the stimulus and
 %which are only noise
@@ -151,18 +149,19 @@ targetVectorStore = zeros(2,200);
 
 %Fill in the random input and target stores
 % each element column can be either a noise or a stimuli
-for i = 1:200
-   RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
-   RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
-   
-   %Fill in the value with 1 if there is stimulus, leave at 0 otherwise
-   if(any(RandBothTargetStore(:,i)>0))
-       correctTrials(i,1) = 1;
-   end
-   
-end
+% for i = 1:200
+%     
+%    RandBothInputStore(:,i) = BothInputStore(:,thePermutation(i));
+%    RandBothTargetStore(:,i) = BothTargetStore(:,thePermutation(i));
+%    
+%    %Fill in the value with 1 if there is stimulus, leave at 0 otherwise
+%    if(any(RandBothTargetStore(:,i)>0))
+%        correctTrials(i,1) = 1;
+%    end
+%    
+% end
 
-% examples ames
+% Testing for FA----------------------------------
 % RandBothTargetStore(:,200) = zeros(100,1);
 % RandBothTargetStore(100,200) = 1;
 % RandBothInputStore(:,200) = rand(100,1)/50;
@@ -192,25 +191,39 @@ epochPerformanceStoreSoN = zeros(maxEpochs,1);
 tempPerformanceStoreFoN = zeros(200,1);
 tempPerformanceStoreSoN = zeros(200,1);
 
+perm = randperm(200);
+RandBothInputStore = rand(100, 200) * noise;
+
+for i = 1:200
+    randRow = randi([1 100]);
+    if (i <= 100)
+        RandBothTargetStore(randRow, perm(i)) = 1;
+        correctTrials(perm(i)) = 1;
+    
+        RandBothInputStore(:,perm(i)) = rand(100,1) * 0.02;
+        RandBothInputStore(randRow, perm(i)) = 1 - rand();
+    end
+end
 %--------------------------START OF ALL TRAINING-----------------------------
 
 while (epochs < maxEpochs)
     %Pre-Training of Data
     for i = 1:200
         
+        n = randi([1 200]);
         %----------------------------------------------------
         %----------------FoN within 1:200 loop---------------
         %----------------------------------------------------
 
         %Run the vector through the assocation matrix one at a time
         if (alternativeSigmoidFoN == 0)
-            inputPattern = RandBothInputStore(:,i);
+            inputPattern = RandBothInputStore(:,n);
             input_to_hidden = w_fg * inputPattern; %60
             hidden_activation = activation_fn(input_to_hidden);
             input_to_output = w_gh * hidden_activation; %100
             output_activation = activation_fn(input_to_output);
         elseif (alternativeSigmoidFoN == 1)
-            inputPattern = RandBothInputStore(:,i);
+            inputPattern = RandBothInputStore(:,n);
             input_to_hidden = w_fg * inputPattern; %60
             hidden_activation = activation_fn_2(input_to_hidden);
             input_to_output = w_gh * hidden_activation; %100
@@ -220,7 +233,7 @@ while (epochs < maxEpochs)
         % output_activation_store(:,i) = output_activation;
 
         %Calculate the output error
-        output_error = RandBothTargetStore(:,i) - output_activation;
+        output_error = RandBothTargetStore(:,n) - output_activation;
      
         % Create the required change in weights by backpropagation
         if (alternativeSigmoidFoN == 0)
@@ -244,10 +257,10 @@ while (epochs < maxEpochs)
         end
         
         % Determine if the FoN is making a correct judgment
-        if ((stimulusPresent == true && correctTrials(i,1) == 1) || (stimulusPresent == false && correctTrials(i,1) == 0))
+        if ((stimulusPresent == true && correctTrials(n,1) == 1) || (stimulusPresent == false && correctTrials(n,1) == 0))
            FoNIsCorrect = true;
            tempPerformanceStoreFoN(i,1) = 1;
-        elseif  ((stimulusPresent == true && correctTrials(i,1) == 0) || (stimulusPresent == false && correctTrials(i,1) == 1))
+        elseif  ((stimulusPresent == true && correctTrials(n,1) == 0) || (stimulusPresent == false && correctTrials(n,1) == 1))
            FoNIsCorrect = false;
            tempPerformanceStoreFoN(i,1) = 0;
         else
@@ -309,19 +322,25 @@ while (epochs < maxEpochs)
         %backpropagate through one set of hidden units
 
         output_error_2 = targetVector - output_activation_2;
+        targetVectorStore(:,thePermutation(i)) = targetVector;
         
         % Calculate the desired change in weights for w_co
         
-%         if (alternativeSigmoidSoN == 0)
-%             dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
-%         elseif (alternativeSigmoidSoN == 1)
-%             dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
-%         end
+        if (alternativeSigmoidSoN == 0)
+             dw_co = changeW_GH(secondLearningRate,w_co,inputPattern_2,output_error_2);
+         elseif (alternativeSigmoidSoN == 1)
+             dw_co = changeW_GH2(secondLearningRate,w_co,inputPattern_2,output_error_2);
+         end
         
         % Change the weights
        w_co = w_co + dw_co;%0.6  * (w_co + dw_co) - rand();
        son_Output(:,i) = output_activation_2;
      
+        %-----Ames testing
+   if (any(RandBothTargetStore(:,i)) == 1)
+       index = find(RandBothTargetStore(:,i) == 1);
+      RandBothInputStore(index,i) = 1 - rand(); 
+   end
     %End of the for loop that runs through all the columns in the matrix
     end
     %*******************************************************************
@@ -361,19 +380,19 @@ while (epochs < maxEpochs)
     end
     
     %Calculate the error for the entire matrix for FoN
-%     output_error_outer = RandBothTargetStore - output_activation_outer;
-%     
-%     % Calculate the sum of squares for FoN
-%     sse = trace(output_error_outer' * output_error_outer);
-%  
-%     % Store the current sum of squares for FoN in the sum of squares store vector
-%     sseStore(epochs,1) = sse;
-%     
-%     % Every 10 epochs, show what the sum of squares is
-%     if mod(epochs,10) == 0
-%        %disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
-%        %ames commented this out because it was making output too long
-%     end
+    output_error_outer = RandBothTargetStore - output_activation_outer;
+    
+    % Calculate the sum of squares for FoN
+    sse = trace(output_error_outer' * output_error_outer);
+ 
+    % Store the current sum of squares for FoN in the sum of squares store vector
+    sseStore(epochs,1) = sse;
+    
+    % Every 10 epochs, show what the sum of squares is
+    if mod(epochs,10) == 0
+       %disp(string('epoch = ') + epochs + string(', sse value of FoN = ') + sse);
+       %ames commented this out because it was making output too long
+    end
     
     %----------------------------------------
     % ---------------Outer SoN---------------
@@ -408,14 +427,15 @@ while (epochs < maxEpochs)
     elseif (alternativeSigmoidSoN == 1)
         output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
     end
+   
     
-%     % Calculate the error for the entire matrix for SoN
+%     Calculate the error for the entire matrix for SoN
 %     output_error_outer_2 = targetVectorStore - output_activation_outer_2;
 %     
-%     % Calculate the sum of squares for SoN
+%     Calculate the sum of squares for SoN
 %     sse_2 = trace(output_error_outer_2' * output_error_outer_2);
 %     
-%     % Store the current sum of squares for SoN in the sum of squares store vector
+%     Store the current sum of squares for SoN in the sum of squares store vector
 %     sseStore_2(epochs,1) = sse_2;
 %     
     % End of the while loop for the epochs   
@@ -436,13 +456,12 @@ end
        ylabel('sse');
    %}    
  % Plot sse for SoN      
- %{
-figure(2);
-       plot(sseStore_2(1:epochs,1));
-       title('SoN ssError Plot');
-       xlabel('epoch');
-       ylabel('sse_2');
- %}
+ 
+% figure(2);
+%        plot(sseStore_2(1:epochs,1));
+%        title('SoN ssError Plot');
+%        xlabel('epoch');
+%        ylabel('sse_2');
 
 %--------Create Counters for the testing loop--------
        
@@ -526,7 +545,7 @@ for i = 1:200
         stimulusPresent = false;
         
         for j = 1:100
-            if (output_activation(j) > 0.5)
+            if (output_activation(j,1) > threshold)
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
@@ -556,7 +575,6 @@ for i = 1:200
             crCountFoN = crCountFoN + 1;
         elseif (correctTrials(i,1) == 1 && stimulusPresent == false)
             disp(string('   -- This assessment is incorrect.'));
-
             FoNIsCorrect = false;
             missCountFoN = missCountFoN + 1;
         elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
@@ -622,27 +640,27 @@ for i = 1:200
         disp(output_activation_2_wta);
         
         % Set up the target vector according to the FoN's accuracy
-        if (FoNIsCorrect == true) 
-            targetVector = [1;0];
-        elseif (FoNIsCorrect == false) 
-            targetVector = [0;1]; 
-        else
-            disp(string('Error in generating targetVector in bottom 1:200 loop.'));
-        end
+%         if (FoNIsCorrect == true) 
+%             targetVector = [1;0];
+%         elseif (FoNIsCorrect == false) 
+%             targetVector = [0;1]; 
+%         else
+%             disp(string('Error in generating targetVector in bottom 1:200 loop.'));
+%         end
         
-        if (highWager == true &&  FoNIsCorrect == true)
+        if (highWager == true &&  targetVectorStore(1,i) == 1)
             disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             hitsCountSoN = hitsCountSoN + 1;
-        elseif (highWager == false &&  FoNIsCorrect == false)
+        elseif (highWager == false &&  targetVectorStore(1,i) == 0)
             disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             crCountSoN = crCountSoN + 1;
 
-        elseif (highWager == true &&  FoNIsCorrect == false)
+        elseif (highWager == true &&  targetVectorStore(1,i) == 0)
             disp(string('         The SoN assessment is incorrect.... '));
             faCountSoN = faCountSoN + 1;
-        elseif (highWager == false &&  FoNIsCorrect == true)
+        elseif (highWager == false &&  targetVectorStore(1,i) == 1)
             disp(string('         The SoN assessment is incorrect.... '));
             missCountSoN = missCountSoN + 1;
         end
@@ -650,21 +668,6 @@ for i = 1:200
 end
 %----------------------END OF TESTING------------------------------------
 
-
-%{
-%Plot the performance per epoch
-plot(epochPerformanceStoreFoN);
-hold;
-plot(epochPerformanceStoreSoN);
-ylim([0 1]);
-title('Performance in Recognition and Wagering');
-       xlabel('epoch');
-       ylabel('Performance');
-       xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
-       legend('First Order Network', 'Second Order Network');
-
- %}
- 
 %Display if subthreshold test or suprathreshold test
 disp(' ');
 if subthresholdTest == true
@@ -724,7 +727,7 @@ averagePerformanceSoN = mean(runsPerformanceStoreSoN,2);
 
 %Plot the performance per epoch
 plot(averagePerformanceFoN);
-hold;
+hold on;
 plot(averagePerformanceSoN);
 ylim([0 1]);
 title('Performance in Recognition and Wagering');
@@ -732,3 +735,4 @@ title('Performance in Recognition and Wagering');
        ylabel('Performance');
        xticks([0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150]);
        legend('First Order Network', 'Second Order Network');
+hold off;
