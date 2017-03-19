@@ -13,9 +13,9 @@ alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
-manyRuns = 0;
-threshold = 0.75;
-noise = 0.75;
+manyRuns = 1;
+threshold = 0.5;
+noise = 0.02;
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 %secondNetUnit = 0;
@@ -250,7 +250,7 @@ while (epochs < maxEpochs)
         %Determine judgment at this point to train SoN
         stimulusPresent = false;
       
-        if (any(output_activation > noise))
+        if (any(output_activation > threshold))
            stimulusPresent = true; 
         end
     
