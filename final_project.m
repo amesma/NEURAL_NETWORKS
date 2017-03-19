@@ -249,13 +249,11 @@ while (epochs < maxEpochs)
         
         %Determine judgment at this point to train SoN
         stimulusPresent = false;
-        for j = 1:100
-            if (output_activation(j,1) > 0.5)
-               stimulusPresent = true; 
-               break
-            end
+      
+        if (any(output_activation > noise))
+           stimulusPresent = true; 
         end
-        
+    
         % Determine if the FoN is making a correct judgment
         if ((stimulusPresent == true && correctTrials(n,1) == 1) || (stimulusPresent == false && correctTrials(n,1) == 0))
            FoNIsCorrect = true;
@@ -413,21 +411,22 @@ while (epochs < maxEpochs)
     %inputPattern_2 is 100 x 1
     
     % Run the entire thing through the SoN to test, like FoN above
-    inputPatternOuter_2 = compMatrix;
-    if (sigmoidForComparatorMatrix == 1)
-        if (alternativeSigmoidSoN == 0)
-            inputPatternOuter_2 = activation_fn(inputPatternOuter_2);
-        elseif (alternativeSigmoidSoN == 1)
-            inputPatternOuter_2 = activation_fn_2(inputPatternOuter_2);
-        end
-    end
-    input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
-    if (alternativeSigmoidSoN == 0)
-        output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
-    elseif (alternativeSigmoidSoN == 1)
-        output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
-    end
-   
+    
+%     inputPatternOuter_2 = compMatrix;
+%     if (sigmoidForComparatorMatrix == 1)
+%         if (alternativeSigmoidSoN == 0)
+%             inputPatternOuter_2 = activation_fn(inputPatternOuter_2);
+%         elseif (alternativeSigmoidSoN == 1)
+%             inputPatternOuter_2 = activation_fn_2(inputPatternOuter_2);
+%         end
+%     end
+%     input_to_hidden_outer_2 = w_co * inputPatternOuter_2;
+%     if (alternativeSigmoidSoN == 0)
+%         output_activation_outer_2 = activation_fn(input_to_hidden_outer_2);
+%     elseif (alternativeSigmoidSoN == 1)
+%         output_activation_outer_2 = activation_fn_2(input_to_hidden_outer_2);
+%     end
+%    
     
 %     Calculate the error for the entire matrix for SoN
 %     output_error_outer_2 = targetVectorStore - output_activation_outer_2;
@@ -526,8 +525,9 @@ for i = 1:200
     
         %--------Decision of FON--------
 
+        n = randperm(200);
         %Run the vector through the assocation matrix
-        inputPattern = RandBothInputStore(:,i);%new_fon(:,i);
+        inputPattern = RandBothInputStore(:,n(i));%new_fon(:,i);
         
         if (alternativeSigmoidFoN == 0)
             input_to_hidden = w_fg * inputPattern;
@@ -544,12 +544,10 @@ for i = 1:200
         %that is above threshold
         stimulusPresent = false;
         
-        for j = 1:100
-            if (output_activation(j,1) > threshold)
+            if (any(output_activation > threshold))
                stimulusPresent = true; 
               % disp(output_activation(j,1));
             end
-        end
         
         % Display the results of the decision
         if(stimulusPresent == true)
@@ -563,21 +561,21 @@ for i = 1:200
         % Determine the correct answer and set the boolean value to reflect
         % accuracy
         
-        if(correctTrials(i,1) == 1 && stimulusPresent == true)
+        if(correctTrials(n(i),1) == 1 && stimulusPresent == true)
             correctAssess = correctAssess + 1;
             %disp(string('   ++ This FON assessment is correct.'));
             FoNIsCorrect = true;
             hitsCountFoN = hitsCountFoN + 1;
-        elseif (correctTrials(i,1) == 0 && stimulusPresent == false)
+        elseif (correctTrials(n(i),1) == 0 && stimulusPresent == false)
             correctAssess = correctAssess + 1;
             %disp(string('   ++ This assessment is correct.'));
             FoNIsCorrect = true;
             crCountFoN = crCountFoN + 1;
-        elseif (correctTrials(i,1) == 1 && stimulusPresent == false)
+        elseif (correctTrials(n(i),1) == 1 && stimulusPresent == false)
             %disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
             missCountFoN = missCountFoN + 1;
-        elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
+        elseif (correctTrials(n(i),1) == 0 && stimulusPresent == true)
             %disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
             faCountFoN = faCountFoN + 1;
@@ -586,7 +584,7 @@ for i = 1:200
         %--------Decision of SON--------
         %
        %output_activation_store(100,200) = 1;
-        compMatrix = RandBothInputStore(:,i) - output_activation;
+        compMatrix = RandBothInputStore(:,n(i)) - output_activation;
       % False Alarm test
 %         if (i == 200)
 %            compMatrix(100) = -1;
@@ -648,19 +646,19 @@ for i = 1:200
 %             disp(string('Error in generating targetVector in bottom 1:200 loop.'));
 %         end
         
-        if (highWager == true &&  targetVectorStore(1,i) == 1)
+        if (highWager == true &&  targetVectorStore(1,n(i)) == 1)
             %disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             hitsCountSoN = hitsCountSoN + 1;
-        elseif (highWager == false &&  targetVectorStore(1,i) == 0)
+        elseif (highWager == false &&  targetVectorStore(1,n(i)) == 0)
             %disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             crCountSoN = crCountSoN + 1;
 
-        elseif (highWager == true &&  targetVectorStore(1,i) == 0)
+        elseif (highWager == true &&  targetVectorStore(1,n(i)) == 0)
             %disp(string('         The SoN assessment is incorrect.... '));
             faCountSoN = faCountSoN + 1;
-        elseif (highWager == false &&  targetVectorStore(1,i) == 1)
+        elseif (highWager == false &&  targetVectorStore(1,n(i)) == 1)
             %disp(string('         The SoN assessment is incorrect.... '));
             missCountSoN = missCountSoN + 1;
         end
