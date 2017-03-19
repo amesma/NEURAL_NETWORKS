@@ -8,14 +8,14 @@ maxEpochs = 150;
 rng('shuffle');
 
 %*****SWITCHES*****
-subthresholdTest  = 1;
+subthresholdTest  = 0;
 alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
 manyRuns = 0;
-threshold = 0.5;
-noise = 0.5;
+threshold = 0.75;
+noise = 0.75;
 %simple counter to store all errors
 %[Not sure if we are using this secondNetUnit variable]
 %secondNetUnit = 0;
@@ -33,7 +33,7 @@ lower_limit = 0;
 runs = 0;
 
 if(manyRuns == 1)
-    maxRuns = 10;
+    maxRuns = 15;
 elseif (manyRuns == 0)
     maxRuns = 1;
 end
@@ -322,7 +322,7 @@ while (epochs < maxEpochs)
         %backpropagate through one set of hidden units
 
         output_error_2 = targetVector - output_activation_2;
-        targetVectorStore(:,thePermutation(i)) = targetVector;
+        targetVectorStore(:,n) = targetVector;
         
         % Calculate the desired change in weights for w_co
         
@@ -553,9 +553,9 @@ for i = 1:200
         
         % Display the results of the decision
         if(stimulusPresent == true)
-            disp(string('In pattern ') + i + string(', the stimulus is present.')); 
+          %  disp(string('In pattern ') + i + string(', the stimulus is present.')); 
         elseif (stimulusPresent == false)
-            disp(string('In pattern ') + i + string(', the stimulus is absent.'));
+           % disp(string('In pattern ') + i + string(', the stimulus is absent.'));
         else
             disp(string('There is no way this is supposed to be displaying.'));
         end
@@ -565,20 +565,20 @@ for i = 1:200
         
         if(correctTrials(i,1) == 1 && stimulusPresent == true)
             correctAssess = correctAssess + 1;
-            disp(string('   ++ This FON assessment is correct.'));
+            %disp(string('   ++ This FON assessment is correct.'));
             FoNIsCorrect = true;
             hitsCountFoN = hitsCountFoN + 1;
         elseif (correctTrials(i,1) == 0 && stimulusPresent == false)
             correctAssess = correctAssess + 1;
-            disp(string('   ++ This assessment is correct.'));
+            %disp(string('   ++ This assessment is correct.'));
             FoNIsCorrect = true;
             crCountFoN = crCountFoN + 1;
         elseif (correctTrials(i,1) == 1 && stimulusPresent == false)
-            disp(string('   -- This assessment is incorrect.'));
+            %disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
             missCountFoN = missCountFoN + 1;
         elseif (correctTrials(i,1) == 0 && stimulusPresent == true)
-            disp(string('   -- This assessment is incorrect.'));
+            %disp(string('   -- This assessment is incorrect.'));
             FoNIsCorrect = false;
             faCountFoN = faCountFoN + 1;
         end
@@ -637,7 +637,7 @@ for i = 1:200
         else
              disp(string('Error in making a SoN Decision.'));
         end
-        disp(output_activation_2_wta);
+        %disp(output_activation_2_wta);
         
         % Set up the target vector according to the FoN's accuracy
 %         if (FoNIsCorrect == true) 
@@ -649,19 +649,19 @@ for i = 1:200
 %         end
         
         if (highWager == true &&  targetVectorStore(1,i) == 1)
-            disp(string('         The SoN assessment is correct!!! '));
+            %disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             hitsCountSoN = hitsCountSoN + 1;
         elseif (highWager == false &&  targetVectorStore(1,i) == 0)
-            disp(string('         The SoN assessment is correct!!! '));
+            %disp(string('         The SoN assessment is correct!!! '));
             correctAssess_2 = correctAssess_2 + 1;   
             crCountSoN = crCountSoN + 1;
 
         elseif (highWager == true &&  targetVectorStore(1,i) == 0)
-            disp(string('         The SoN assessment is incorrect.... '));
+            %disp(string('         The SoN assessment is incorrect.... '));
             faCountSoN = faCountSoN + 1;
         elseif (highWager == false &&  targetVectorStore(1,i) == 1)
-            disp(string('         The SoN assessment is incorrect.... '));
+            %disp(string('         The SoN assessment is incorrect.... '));
             missCountSoN = missCountSoN + 1;
         end
              
