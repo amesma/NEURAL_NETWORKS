@@ -733,6 +733,9 @@ runsFACountStoreSoN(runs,1) = faCountSoN/2;
 runsCRCountStoreSoN(runs,1) = crCountSoN/2;
 runsMissCountStoreSoN(runs,1) = missCountSoN/2;
 
+disp(' ');
+disp(string('run number: ') + runs);
+disp(' ');
 end
 %^^^ This end here belongs to the massive while loop all the way at the top
 %(for number of runs, line 45 or so.)
