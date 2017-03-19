@@ -13,7 +13,7 @@ alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
-manyRuns = 1;
+manyRuns = 0;
 threshold = 0.5;
 noise = 0.5;
 %simple counter to store all errors
