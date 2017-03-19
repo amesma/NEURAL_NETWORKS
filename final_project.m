@@ -13,13 +13,10 @@ alternativeSigmoidFoN = 0;
 alternativeSigmoidSoN = 0;
 
 sigmoidForComparatorMatrix = 0;
-manyRuns = 1;
+manyRuns = 0;
 threshold = 0.5;
-noise = 0.02;
-%simple counter to store all errors
-%[Not sure if we are using this secondNetUnit variable]
-%secondNetUnit = 0;
-wtaCorrected = zeros(100,200);
+noiseNoise = 0.5;
+stimuliNoise = 0.02;
 
 %----------Winner Take All Parameters (first type of network)-------
 %not changing
@@ -41,6 +38,17 @@ end
 %Huge matrix to store all the FoN and SoN accuracy rates across the runs
 runsPerformanceStoreFoN = zeros(maxEpochs,maxRuns);
 runsPerformanceStoreSoN = zeros(maxEpochs,maxRuns);
+
+runsHitsCountStoreFoN = zeros(maxRuns,1);
+runsFACountStoreFoN = zeros(maxRuns,1);
+runsCRCountStoreFoN = zeros(maxRuns,1);
+runsMissCountStoreFoN = zeros(maxRuns,1);
+
+runsHitsCountStoreSoN = zeros(maxRuns,1);
+runsFACountStoreSoN = zeros(maxRuns,1);
+runsCRCountStoreSoN = zeros(maxRuns,1);
+runsMissCountStoreSoN = zeros(maxRuns,1);
+
 
 while (runs < maxRuns)
 runs = runs + 1;
@@ -192,7 +200,7 @@ tempPerformanceStoreFoN = zeros(200,1);
 tempPerformanceStoreSoN = zeros(200,1);
 
 perm = randperm(200);
-RandBothInputStore = rand(100, 200) * noise;
+RandBothInputStore = rand(100, 200) * noiseNoise;
 
 for i = 1:200
     randRow = randi([1 100]);
@@ -200,7 +208,7 @@ for i = 1:200
         RandBothTargetStore(randRow, perm(i)) = 1;
         correctTrials(perm(i)) = 1;
     
-        RandBothInputStore(:,perm(i)) = rand(100,1) * 0.02;
+        RandBothInputStore(:,perm(i)) = rand(100,1) * stimuliNoise;
         RandBothInputStore(randRow, perm(i)) = 1 - rand();
     end
 end
@@ -714,10 +722,40 @@ disp(string('Hits Count: ') + hitsCountSoN/2);
 disp(string('False Alarms Count: ') + faCountSoN/2);
 disp(string('Correct Rejection Count: ') + crCountSoN/2);
 disp(string('Miss Count: ') + missCountSoN/2);
+%Store SDT results in the runsStore
+runsHitsCountStoreFoN(runs,1) = hitsCountFoN/2;
+runsFACountStoreFoN(runs,1) = faCountFoN/2;
+runsCRCountStoreFoN(runs,1) = crCountFoN/2;
+runsMissCountStoreFoN(runs,1) = missCountFoN/2;
+
+runsHitsCountStoreSoN(runs,1) = hitsCountSoN/2;
+runsFACountStoreSoN(runs,1) = faCountSoN/2;
+runsCRCountStoreSoN(runs,1) = crCountSoN/2;
+runsMissCountStoreSoN(runs,1) = missCountSoN/2;
 
 end
 %^^^ This end here belongs to the massive while loop all the way at the top
 %(for number of runs, line 45 or so.)
+
+disp('------------------------------------------');
+disp(' ');
+
+%Display count after 15 runs
+%Display SDT numbers for FoN
+disp(string('average FoN:'));
+disp(string('Hits Count: ') + mean(runsHitsCountStoreFoN));
+disp(string('False Alarms Count: ') + mean(runsFACountStoreFoN));
+disp(string('Correct Rejection Count: ') + mean(runsCRCountStoreFoN));
+disp(string('Miss Count: ') + mean(runsMissCountStoreFoN));
+disp(' ');
+
+%Display SDT numbers for FoN
+disp(string('average SoN:'));
+disp(string('Hits Count: ') + mean(runsHitsCountStoreSoN));
+disp(string('False Alarms Count: ') + mean(runsFACountStoreSoN));
+disp(string('Correct Rejection Count: ') + mean(runsCRCountStoreSoN));
+disp(string('Miss Count: ') + mean(runsMissCountStoreSoN));
+disp(' ');
 
 %average out the performances for each epoch
 averagePerformanceFoN = mean(runsPerformanceStoreFoN,2);
